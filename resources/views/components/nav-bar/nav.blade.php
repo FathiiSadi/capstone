@@ -6,13 +6,15 @@
 
                 <a href="/" class="text-white">Home</a>
                 <a href="/schedule" class="text-white">schedule</a>
-                <a href="" class="text-white">Profile</a>
+                @auth
+                <a href="" class="text-white">Profile ({{ Auth::user()->name }})</a>
+                @endauth
                 <!-- <a href="" class="text-white">Companies</a> -->
             </div>
             @auth
             <div>
 
-                <!-- <a href="/logout">Logout</a> -->
+                <a href="/logout" class="text-white">Logout</a>
 
             </div>
             @endauth
