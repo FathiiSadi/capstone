@@ -2,7 +2,7 @@
     <div class="container">
         <div class="row justify-content-center">
 
-            <div class="col-lg-4 col-12 mb-4 mb-lg-0">
+            <div class="col">
                 <div class="custom-block bg-white shadow-lg">
                     <a href="topics-detail.html">
                         <div class="d-flex">
@@ -20,7 +20,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-6 col-12">
+            <div class="col">
                 <div class="custom-block custom-block-overlay">
                     <div class="d-flex flex-column h-100">
                         <img src="images/businesswoman-using-tablet-analysis.jpg" class="custom-block-image img-fluid" alt="">
@@ -47,6 +47,8 @@
 
                                 <li class="social-icon-item">
                                     <a href="#" class="social-icon-link bi-facebook"></a>
+                                </li>
+                            </ul>
                         </div>
 
                         <div class="section-overlay"></div>

@@ -35,34 +35,21 @@
                 <h6 class="site-footer-title mb-3">Information</h6>
 
                 <p class="text-white d-flex mb-1">
-                    <a href="tel: 305-240-9671" class="site-footer-link">
-                        305-240-9671
+                    <a href="tel: 962797915775" class="site-footer-link">
+                        +962797915775
                     </a>
                 </p>
 
                 <p class="text-white d-flex">
-                    <a href="mailto:info@company.com" class="site-footer-link">
-                        info@company.com
+                    <a href="mailto: fathii.alsadi@gmail.com" class="site-footer-link">
+                        fathii.alsadi@gmail.com
                     </a>
                 </p>
             </div>
 
             <div class="col-lg-3 col-md-4 col-12 mt-4 mt-lg-0 ms-auto">
-                <div class="dropdown">
-                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        English</button>
-
-                    <ul class="dropdown-menu">
-                        <li><button class="dropdown-item" type="button">Thai</button></li>
-
-                        <li><button class="dropdown-item" type="button">Myanmar</button></li>
-
-                        <li><button class="dropdown-item" type="button">Arabic</button></li>
-                    </ul>
-                </div>
-
-                <p class="copyright-text mt-lg-5 mt-4">Copyright © 2048 Topic Listing Center. All rights reserved.
-                    <br><br>Design: <a rel="nofollow" href="https://templatemo.com" target="_blank">TemplateMo</a> Distribution <a href="https://themewagon.com">ThemeWagon</a>
+                <p class="copyright-text ">Copyright © 2025. All rights reserved.
+                    <br><br>Fathi Al-Sadi: <br>SolveX
                 </p>
 
             </div>
