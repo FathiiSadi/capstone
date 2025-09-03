@@ -7,26 +7,25 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-    <title>Admin Module - {{ config('app.name', 'Laravel') }}</title>
+    <title>Admin - {{ config('app.name', 'Laravel') }}</title>
 
-    <meta name="description" content="{{ $description ?? '' }}">
-    <meta name="keywords" content="{{ $keywords ?? '' }}">
-    <meta name="author" content="{{ $author ?? '' }}">
+    <link href="{{ Vite::asset('Modules/Admin/resources/css/nucleo-icons.css') }}" rel="stylesheet" />
+    <link href="{{ Vite::asset('Modules/Admin/resources/css/nucleo-svg.css') }}" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    {{-- Vite CSS --}}
-    {{ module_vite('build-admin', 'resources/assets/sass/app.scss') }}
+    <!-- Main Styling -->
+    @vite(['resources/css/tooltips.css','resources/css/perfect-scrollbar.css','resources/css/nucleo-svg.css','resources/css/nucleo-icons.css','resources/css/argon-dashboard-tailwind.min.css','resources/css/argon-dashboard.tailwind.css'])
+
 </head>
 
-<body>
+<body class="m-0 font-sans text-base antialiased font-normal dark:bg-slate-900 leading-default bg-gray-50 text-slate-500">
+    <x-admin::side-nav />
+    <div class="absolute w-full bg-blue-500 dark:hidden min-h-75"></div>
+
     {{ $slot }}
 
 </body>
 
-{{ module_vite('build-admin', 'resources/assets/js/app.js') }}
-</body>
 
 </html>
