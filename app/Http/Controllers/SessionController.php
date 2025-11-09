@@ -10,7 +10,7 @@ class SessionController extends Controller
 {
     public function create()
     {
-        return view('auth.login');
+        return view('main.auth.login');
     }
 
     public function store()
@@ -28,7 +28,7 @@ class SessionController extends Controller
 
         request()->session()->regenerate();
 
-        return redirect('/');
+        return redirect('/main/');
     }
 
     public function destroy(Request $request)
@@ -38,6 +38,6 @@ class SessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/main/auth/login');
     }
 }
