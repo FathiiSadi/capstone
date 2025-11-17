@@ -37,9 +37,9 @@
             <div class="card-custom mt-3">
                 <h5>Quick Actions</h5>
                 <div class="d-flex gap-2 mt-2">
-                    <a href="preferences.html" class="btn btn-primary-custom">Submit Preferences</a>
-                    <a href="schedule.html" class="btn btn-outline-secondary">Generate Schedule</a>
-                    <a href="courses.html" class="btn btn-outline-secondary">Manage Courses</a>
+                    <a href="/preference" class="btn btn-primary-custom">Submit Preferences</a>
+                    <a href="/schedule" class="btn btn-outline-secondary">Generate Schedule</a>
+                    <a href="/course" class="btn btn-outline-secondary">Manage Courses</a>
                 </div>
             </div>
         </main>

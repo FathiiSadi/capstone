@@ -16,7 +16,7 @@
 
                 <div class="mt-3">
                     <div class="progress" style="height:28px;">
-                        <div id="schedule-progress" class="progress-bar" style="width:0%">0%</div>
+                        <div id="schedule-progress" class="progress-bar" style="width:0">0%</div>
                     </div>
                 </div>
             </div>
