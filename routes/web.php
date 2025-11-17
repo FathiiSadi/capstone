@@ -9,31 +9,31 @@ use Illuminate\Support\Facades\Route;
 //});
 
 Route::middleware('guest')->group(function () {
-    Route::get('main/auth/register', [RegisteredUserController::class, 'create']);
-    Route::post('main/auth/register', [RegisteredUserController::class, 'store']);
+    Route::get('auth/register', [RegisteredUserController::class, 'create']);
+    Route::post('auth/register', [RegisteredUserController::class, 'store']);
 
-    Route::get('main/auth/login', [SessionController::class, 'create']);
-    Route::post('main/auth/login', [SessionController::class, 'store']);
+    Route::get('auth/login', [SessionController::class, 'create']);
+    Route::post('auth/login', [SessionController::class, 'store']);
 });
 
 Route::get('/logout', [SessionController::class, 'destroy'])->name('logout');
 
-Route::get('/main', function () {
-    return view('/main/index');
+Route::get('/', function () {
+    return view('/index');
 });
 
-Route::get('/main/auth/login', function () {
-    return view('/main/auth/login');
+Route::get('/auth/login', function () {
+    return view('/auth/login');
 });
 
-Route::get('/main/preference', function () {
-    return view('/main/preference');
+Route::get('/preference', function () {
+    return view('/preference');
 });
 
-Route::get('/main/schedule', function () {
-    return view('/main/schedule');
+Route::get('/schedule', function () {
+    return view('/schedule');
 });
 
-Route::get('/main/course', function () {
-    return view('/main/course');
+Route::get('/course', function () {
+    return view('/course');
 });

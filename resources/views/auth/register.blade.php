@@ -1,4 +1,4 @@
-<x-layout title="Login">
+<x-layout title="Register">
     <section class="login-page">
         <div class="card login-card">
             <div class="d-flex align-items-center mb-3">
@@ -11,25 +11,32 @@
                 </div>
             </div>
 
-            <x-forms.form method="POST" action="/main/auth/login" enctype="multipart/form-data">
+            <x-forms.form method="POST" action="/auth/register" enctype="multipart/form-data" autocomplete="on">
                 <div class="mb-3">
-                    <x-forms.input label="Email" name="email" autocomplete="email" type="email"
-                                   placeholder="you@htu.edu"/>
+                    <x-forms.input label="Your Name" name="name" autocomplete="name" placeholder="Fathi Al-Sadi"/>
                 </div>
 
                 <div class="mb-3">
-                    <x-forms.input label="password" name="password" type="password" placeholder="••••••"/>
+                    <x-forms.input label="Email" name="email" autocomplete="email" placeholder="example@htu.edu.jo"/>
+                </div>
+                <div class="mb-3">
+                    <x-forms.input label="Password" name="password" type="password" placeholder="*******"/>
+                </div>
+
+                <div class="mb-3">
+                    <x-forms.input label="Confirm Password" name="password_confirmation" type="password"
+                                   placeholder="*******"/>
                 </div>
 
                 <div class="mb-3 d-flex justify-content-between align-items-center">
                     <div>
-                        <a href="/main/auth/register" class="small text-muted">Don't have an account?</a>
+                        <a href="/auth/login" class="small text-muted">Already have an account?</a>
                     </div>
                     <a href="#" class="small text-muted">Forgot password?</a>
                 </div>
 
                 <div class="d-grid">
-                    <x-forms.button>Login</x-forms.button>
+                    <x-forms.button>Create Account</x-forms.button>
                 </div>
             </x-forms.form>
         </div>
