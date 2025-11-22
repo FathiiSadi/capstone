@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('days', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday']);
             $table->time('start_time');
             $table->time('end_time');
-            $table->enum('status', ['Active', 'Inactive', 'Closed']);
+            $table->enum('status', ['Active', 'Inactive', 'Closed'])->default('Active');
             $table->common();
         });
     }

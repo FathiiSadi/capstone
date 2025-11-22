@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('departments', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->string('code');
+            $table->string('code')->nullable();
             $table->unsignedBigInteger('manager_id')->nullable();
             $table->common();
         });

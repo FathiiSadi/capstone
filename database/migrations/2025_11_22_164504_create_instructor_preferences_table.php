@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('instructor_id')->constrained();
             $table->foreignId('course_id')->constrained();
             $table->foreignId('semester_id')->constrained();
-            $table->timestamp('submission_time');
+            $table->timestamp('submission_time')->useCurrent();
             $table->common();
         });
     }

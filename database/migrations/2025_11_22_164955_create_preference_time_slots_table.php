@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('preference_time_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('instructor_preference_id');
-            $table->enum('days', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday']);
+            $table->enum('days', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'])->nullable();
             $table->common();
         });
     }

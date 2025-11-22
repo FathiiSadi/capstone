@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('department_id')->constrained('departments')->onDelete('cascade');
-            $table->string('code', 20)->unique();
+            $table->string('code', 20)->unique()->nullable();
             $table->unsignedSmallInteger('credits')->default(3);
             $table->integer('sections')->default(2);
             $table->common();
