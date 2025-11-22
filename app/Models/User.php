@@ -23,6 +23,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'role',
+        'department_id',
+        'email_verified_at',
         'password',
     ];
 
@@ -53,4 +56,23 @@ class User extends Authenticatable
     {
         return $this->hasOne(Instructor::class);
     }
+
+//    public function department(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+//    {
+//        return $this->belongsTo(Department::class);
+//    }
+
+    protected static function booted(): void
+    {
+        static::saved(function ($user) {
+                if ($user->role === 'instructor' || $user->role === 'admin') {
+                    $user->instructor()->firstOrCreate([]);
+                } else {
+                    $user->instructor?->delete();
+                }
+
+        });
+
+    }
+
 }

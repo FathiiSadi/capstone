@@ -18,8 +18,7 @@ class InstructorForm
                 ->searchable()
                 ->required(),
 
-                TextInput::make('name')->required(),
-                TextInput::make('position')->required(),
+                TextInput::make('position')->required()->default('Instructor'),
                 TextInput::make('min_credits')->label('Min Credits')->numeric()->required()->default(6),
 
 
