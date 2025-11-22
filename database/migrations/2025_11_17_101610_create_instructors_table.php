@@ -13,7 +13,6 @@ return new class extends Migration {
         Schema::create('instructors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users');
-            $table->string('name')->nullable();
             $table->string('position')->nullable();
             $table->integer('min_credits')->default(6);
             $table->common();
