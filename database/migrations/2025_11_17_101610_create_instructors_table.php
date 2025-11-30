@@ -13,8 +13,8 @@ return new class extends Migration {
         Schema::create('instructors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users');
-            $table->enum('position', ['Dean', 'Instructor', 'TA'])->default('Instructor')->nullable();
-            $table->integer('min_credits')->default(6);
+            $table->enum('position', ['dean', 'instructor', 'admin', 'ta', 'head of department', 'doctor', 'lecturer', 'professor of Practice'])->default('instructor')->nullable();
+            $table->integer('min_credits')->default(15);
             $table->common();
         });
     }

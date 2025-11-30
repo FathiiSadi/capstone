@@ -25,4 +25,21 @@ class Course extends Model
     {
         return $this->belongsTo(Department::class);
     }
+
+    public function semesters(): BelongsToMany
+    {
+        return $this->belongsToMany(Semester::class, 'semester_courses')
+            ->withPivot(['sections_required', 'sections_per_instructor'])
+            ->withTimestamps();
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_courses');
+    }
+
+    public function sections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Section::class);
+    }
 }

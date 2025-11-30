@@ -19,6 +19,7 @@ class InstructorsTable
         return $table
             ->columns([
                 TextColumn::make('user.name'),
+                TextColumn::make('user.email')->label('Email'),
                 TextColumn::make('position'),
                 TextColumn::make('min_credits'),
 

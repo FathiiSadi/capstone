@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Instructors\Schemas;
 
+use App\InstructorPosition;
 use App\Models\Instructor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -18,7 +19,8 @@ class InstructorForm
                 ->searchable()
                 ->required(),
 
-                TextInput::make('position')->required()->default('Instructor'),
+                Select::make('position')
+                ->options(InstructorPosition::class),
                 TextInput::make('min_credits')->label('Min Credits')->numeric()->required()->default(6),
 
 

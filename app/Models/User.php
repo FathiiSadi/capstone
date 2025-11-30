@@ -57,19 +57,29 @@ class User extends Authenticatable
         return $this->hasOne(Instructor::class);
     }
 
-//    public function department(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-//    {
-//        return $this->belongsTo(Department::class);
-//    }
+    public function department(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function courses(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'user_courses');
+    }
+
+    public function managedDepartments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Department::class, 'manager_id');
+    }
 
     protected static function booted(): void
     {
         static::saved(function ($user) {
-                if ($user->role === 'instructor' || $user->role === 'admin') {
-                    $user->instructor()->firstOrCreate([]);
-                } else {
-                    $user->instructor?->delete();
-                }
+            if ($user->role === 'instructor' || $user->role === 'admin') {
+                $user->instructor()->firstOrCreate([]);
+            } else {
+                $user->instructor?->delete();
+            }
 
         });
 
