@@ -43,8 +43,13 @@ class InstructorPreferenceController extends Controller
         // Get active semester for new submissions
         $activeSemester = Semester::where('status', 'active')->first();
 
+        // If no active semester, try to get the most recent semester
+        if (!$activeSemester) {
+            $activeSemester = Semester::orderBy('created_at', 'desc')->first();
+        }
+
         // Get available courses for the active semester
-        $availableCourses = $activeSemester
+        $availableCourses = $activeSemester && $activeSemester->courses->isNotEmpty()
             ? $activeSemester->courses
             : Course::all();
 
@@ -69,7 +74,12 @@ class InstructorPreferenceController extends Controller
         $instructor = $user->instructor;
 
         if (!$instructor) {
-            return back()->with('error', 'Instructor profile not found.');
+            return back()->withInput()->with('error', 'Instructor profile not found.');
+        }
+
+        // Check if semester exists
+        if (!$validated['semester_id']) {
+            return back()->withInput()->with('error', 'No semester selected. Please contact administrator.');
         }
 
         try {
@@ -90,7 +100,7 @@ class InstructorPreferenceController extends Controller
                 ]);
 
                 // Create time slot preference if provided
-                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
+                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time']) || !empty($validated['notes'])) {
                     $daysInfo = [];
                     if (!empty($validated['preferred_days'])) {
                         $daysInfo[] = $validated['preferred_days'];
@@ -116,7 +126,8 @@ class InstructorPreferenceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to save preferences. Please try again.');
+            \Log::error('Failed to save preferences: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to save preferences. Please try again. Error: ' . $e->getMessage());
         }
     }
 

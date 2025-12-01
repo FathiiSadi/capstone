@@ -8,18 +8,22 @@
     </div>
     <div class="d-flex align-items-center gap-3">
         @auth
-            <span>{{ auth()->user()->name }}</span>
             <div class="dropdown">
-                <img src="{{ asset('assets/logo.png') }}" alt="Avatar"
-                    style="width:36px;height:36px;border-radius:50%;background:#fff;cursor:pointer;"
-                    id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="{{ Auth::user()->profile_photo_path ? asset('storage/' . Auth::user()->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&background=0D6EFD&color=ffffff' }}"
+                        alt="Profile" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    <span class="d-none d-md-inline text-dark">{{ Auth::user()->name }}</span>
+                </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li>
                         <a class="dropdown-item" href="{{ route('instructor.profile') }}">
                             <i class="bi bi-person me-2"></i>Profile
                         </a>
                     </li>
-                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li>
                         <a class="dropdown-item" href="/logout">
                             <i class="bi bi-box-arrow-right me-2"></i>Logout

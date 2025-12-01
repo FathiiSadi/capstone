@@ -31,11 +31,7 @@ class UserForm
                     ->default('user')
                     ->required(),
                 Select::make('department_id')
-                    ->options([
-                        1 => 'Computer Science',
-                        2 => 'Engineering',
-                        3 => 'Business',
-                    ])
+                    ->relationship('department', 'name')
                     ->nullable(),
 
         ]);

@@ -13,6 +13,7 @@ class Section extends Model
     protected $fillable = [
         'course_id',
         'semester_id',
+        'instructor_id',
         'days',
         'start_time',
         'end_time',
@@ -22,6 +23,11 @@ class Section extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(Instructor::class);
     }
 
     public function semester(): BelongsTo

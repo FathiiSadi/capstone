@@ -18,10 +18,7 @@ Route::middleware('guest')->group(function () {
 
 Route::get('/logout', [SessionController::class, 'destroy'])->name('logout');
 
-Route::get('/', function () {
-    $user = auth()->user();
-    return view('/index', compact('user'));
-})->name('home');
+Route::get('/', [App\Http\Controllers\DashboardController::class, 'index'])->name('home');
 
 Route::get('/auth/login', function () {
     return view('/auth/login');
@@ -33,9 +30,6 @@ Route::middleware(['instructor.access'])->group(function () {
         return view('/schedule');
     });
 
-    Route::get('/course', function () {
-        return view('/course');
-    });
 
     Route::get('/home', function () {
         return view('instructorHome');
@@ -47,9 +41,7 @@ Route::middleware(['instructor.access'])->group(function () {
     Route::put('/preferences/{semester}', [App\Http\Controllers\InstructorPreferenceController::class, 'update'])->name('instructor.preferences.update');
     Route::delete('/preferences/{semester}', [App\Http\Controllers\InstructorPreferenceController::class, 'destroy'])->name('instructor.preferences.destroy');
 
-    Route::get('/profile', function () {
-        $user = auth()->user()->load(['instructor', 'department']);
-        return view('profile', compact('user'));
-    })->name('instructor.profile');
+    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('instructor.profile');
+    Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('instructor.profile.update');
 });
 

@@ -37,4 +37,9 @@ class Instructor extends Model
         return $this->hasMany(InstructorPreference::class);
     }
 
+    public function sections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Section::class);
+    }
+
 }

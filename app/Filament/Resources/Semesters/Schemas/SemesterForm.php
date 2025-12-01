@@ -27,14 +27,6 @@ class SemesterForm
                     ->options(['Draft' => 'Draft', 'Open' => 'Open', 'Running' => 'Running', 'closed' => 'Closed'])
                     ->default('closed')
                     ->required(),
-                TextInput::make('created_by')
-                    ->numeric(),
-                TextInput::make('updated_by')
-                    ->numeric(),
-                TextInput::make('deleted_by')
-                    ->numeric(),
-                TextInput::make('ip_address'),
-                TextInput::make('user_agent'),
             ]);
     }
 }

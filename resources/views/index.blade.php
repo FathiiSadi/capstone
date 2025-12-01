@@ -16,39 +16,60 @@
                 @if(in_array($user->role, ['instructor', 'admin']))
                     {{-- Instructor/Admin Dashboard --}}
                     <div class="page-title">Instructor Dashboard</div>
+
+                    <!-- Active Semester Banner -->
+                    @if($activeSemester)
+                        <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-calendar-check fs-4 me-3"></i>
+                            <div>
+                                <strong>Active Semester:</strong> {{ $activeSemester->name }} - {{ ucfirst($activeSemester->type) }}
+                                <div class="small">Make sure to submit your preferences for the upcoming semester if available.
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle fs-4 me-3"></i>
+                            <div>
+                                <strong>No Active Semester</strong>
+                                <div class="small">There is currently no active semester. Please contact the administrator.</div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3">
+                            <div class="card card-custom p-3 h-100">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted">Total Courses</div>
-                                        <div class="kpi">2</div>
+                                        <div class="kpi">{{ $totalCourses }}</div>
                                     </div>
-                                    <div class="fs-3"><i class="bi bi-journal-bookmark"></i></div>
+                                    <div class="fs-3 text-primary"><i class="bi bi-journal-bookmark"></i></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3">
+                            <div class="card card-custom p-3 h-100">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted">Assigned Sections</div>
-                                        <div class="kpi">4</div>
+                                        <div class="kpi">{{ $totalSections > 0 ? $totalSections : '-' }}</div>
                                     </div>
-                                    <div class="fs-3"><i class="bi bi-people"></i></div>
+                                    <div class="fs-3 text-success"><i class="bi bi-people"></i></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3">
+                            <div class="card card-custom p-3 h-100">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted">Current Load (C.H.)</div>
-                                        <div class="kpi">12</div>
+                                        <div class="kpi">{{ $currentLoad }}</div>
                                     </div>
-                                    <div class="fs-3"><i class="bi bi-clock-history"></i></div>
+                                    <div class="fs-3 text-warning"><i class="bi bi-clock-history"></i></div>
                                 </div>
                             </div>
                         </div>
@@ -65,34 +86,23 @@
 
                         <div class="mt-3">
                             <ul class="list-group">
-
-                                <!-- Preferences Submitted -->
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-bold">Preferences Submitted</div>
-                                        Courses preferences submitted on <strong>2025-01-12</strong> for <strong>Spring
-                                            2025</strong>.
-                                    </div>
-                                    <span class="badge bg-success rounded-pill">✔</span>
-                                </li>
-
-                                <!-- Existing examples -->
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-bold">New Schedule Published</div>
-                                        Your Spring 2025 teaching schedule is now available.
-                                    </div>
-                                    <span class="badge bg-primary rounded-pill">New</span>
-                                </li>
-
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-bold">Preference Submission Reminder</div>
-                                        Please submit your preferences before <strong>Jan 20, 2025</strong>.
-                                    </div>
-                                    <span class="badge bg-warning text-dark rounded-pill">Reminder</span>
-                                </li>
-
+                                @forelse($notifications as $notification)
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-bold">{{ $notification->data['title'] ?? 'Notification' }}</div>
+                                            {{ $notification->data['message'] ?? '' }}
+                                            <div class="small text-muted">{{ $notification->created_at->diffForHumans() }}</div>
+                                        </div>
+                                        @if(!$notification->read_at)
+                                            <span class="badge bg-primary rounded-pill">New</span>
+                                        @endif
+                                    </li>
+                                @empty
+                                    <li class="list-group-item text-center text-muted py-3">
+                                        <i class="bi bi-bell-slash fs-4 d-block mb-2"></i>
+                                        No new notifications
+                                    </li>
+                                @endforelse
                             </ul>
                         </div>
                     </div>
@@ -103,74 +113,37 @@
                         <h5>My Courses Schedule</h5>
 
                         <div class="table-responsive mt-3">
-                            <table class="table table-striped">
+                            <table class="table table-striped align-middle">
                                 <thead>
-                                <tr>
-                                    <th>Course</th>
-                                    <th>Section</th>
-                                    <th>Day(s)</th>
-                                    <th>Time</th>
-                                    <th>Room</th>
-                                </tr>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Section</th>
+                                        <th>Day(s)</th>
+                                        <th>Time</th>
+                                        <th>Room</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                <tr>
-                                    <td>CS101 - Intro to Programming</td>
-                                    <td>1</td>
-                                    <td>Sun / Tue</td>
-                                    <td>10:00 - 11:30</td>
-                                    <td>S-207</td>
-                                </tr>
-                                <tr>
-                                    <td>CS101 - Intro to Programming</td>
-                                    <td>3</td>
-                                    <td>Sun / Tue</td>
-                                    <td>13:30 - 15:00</td>
-                                    <td>S-204</td>
-                                </tr>
-                                <tr>
-                                    <td>CS202 - Algorithms</td>
-                                    <td>2</td>
-                                    <td>Mon / Wed</td>
-                                    <td>12:00 - 13:30</td>
-                                    <td>S-205</td>
-                                </tr>
-                                <tr>
-                                    <td>CS202 - Algorithms</td>
-                                    <td>3</td>
-                                    <td>Mon / Wed</td>
-                                    <td>13:30 - 15:00</td>
-                                    <td>W-105</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Office Hours Table -->
-                    <div class="card card-custom mb-3">
-                        <h5>Office Hours</h5>
-
-                        <div class="table-responsive mt-3">
-                            <table class="table table-striped">
-                                <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>Time</th>
-                                    <th>Office</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr>
-                                    <td>Sunday</td>
-                                    <td>14:00 – 15:00</td>
-                                    <td>S-310</td>
-                                </tr>
-                                <tr>
-                                    <td>Tuesday</td>
-                                    <td>09:00 – 10:00</td>
-                                    <td>S-310</td>
-                                </tr>
+                                    @forelse($assignedSections as $section)
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">{{ $section->course->code }}</div>
+                                                <div class="small text-muted">{{ $section->course->name }}</div>
+                                            </td>
+                                            <td>{{ $section->id }}</td> {{-- Or section number if you have a column for it --}}
+                                            <td>{{ $section->days }}</td>
+                                            <td>{{ \Carbon\Carbon::parse($section->start_time)->format('H:i') }} -
+                                                {{ \Carbon\Carbon::parse($section->end_time)->format('H:i') }}</td>
+                                            <td>{{ $section->room ?? 'TBA' }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="bi bi-calendar-x fs-4 d-block mb-2"></i>
+                                                No sections assigned for this semester yet.
+                                            </td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
@@ -181,40 +154,39 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h5>Recent Preferences Submissions</h5>
                             <div>
-                                <a href="{{ route('instructor.preferences') }}"
-                                   class="btn btn-primary-custom btn-sm">Preferences</a>
+                                <a href="{{ route('instructor.preferences') }}" class="btn btn-primary-custom btn-sm">Manage
+                                    Preferences</a>
                             </div>
                         </div>
 
                         <div class="mt-3">
                             <div class="table-responsive">
-                                <table class="table table-sm table-striped">
+                                <table class="table table-sm table-striped align-middle">
                                     <thead>
-                                    <tr>
-                                        <th>Year/Sem</th>
-                                        <th>Submitted On</th>
-                                        <th>Priority Count</th>
-                                        <th>Status</th>
-                                    </tr>
+                                        <tr>
+                                            <th>Semester</th>
+                                            <th>Submitted On</th>
+                                            <th>Status</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    <tr>
-                                        <td>2025 - Spring</td>
-                                        <td>2025-05-01</td>
-                                        <td>8</td>
-                                        <td><span class="badge bg-success">Accepted</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>2024 - Fall</td>
-                                        <td>2024-11-10</td>
-                                        <td>6</td>
-                                        <td><span class="badge bg-secondary">Archived</span></td>
-                                    </tr>
+                                        @forelse($recentPreferences as $pref)
+                                            <tr>
+                                                <td>{{ $pref->semester->name }} - {{ ucfirst($pref->semester->type) }}</td>
+                                                <td>{{ \Carbon\Carbon::parse($pref->submission_time)->format('Y-m-d H:i') }}</td>
+                                                <td><span class="badge bg-success">Submitted</span></td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-3">
+                                                    No preferences submitted yet.
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-
                     </div>
                 @else
                     {{-- Non-Instructor/Admin Users --}}

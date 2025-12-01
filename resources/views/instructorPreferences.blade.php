@@ -90,65 +90,125 @@
             <div class="modal fade" id="addPrefModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
-                        <form action="{{ route('instructor.preferences.store') }}" method="POST">
-                            @csrf
-                            <div class="modal-header">
-                                <h5>Add Course Preferences -
-                                    {{ $activeSemester ? $activeSemester->name . ' ' . ucfirst($activeSemester->type) : 'N/A' }}
-                                </h5>
-                                <button class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-
-                            <div class="modal-body">
-                                <input type="hidden" name="semester_id" value="{{ $activeSemester?->id }}">
-
-                                <div class="mb-3">
-                                    <label for="course_ids" class="form-label">Select Courses <span
-                                            class="text-danger">*</span></label>
-                                    <select class="form-select" id="course_ids" name="course_ids[]" multiple required>
-                                        @foreach($availableCourses as $course)
-                                            <option value="{{ $course->id }}">{{ $course->code }} - {{ $course->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Hold Ctrl/Cmd to select multiple courses or use the search
-                                        box</small>
+                        @if($activeSemester)
+                            <form action="{{ route('instructor.preferences.store') }}" method="POST" id="addPrefForm">
+                                @csrf
+                                <div class="modal-header bg-primary text-white">
+                                    <div>
+                                        <h5 class="mb-0">Add Course Preferences</h5>
+                                        <small>{{ $activeSemester->name }} - {{ ucfirst($activeSemester->type) }}</small>
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
 
-                                <h6>Preferred Days / Time</h6>
+                                <div class="modal-body">
+                                    <input type="hidden" name="semester_id" value="{{ $activeSemester->id }}">
 
-                                <div class="row g-2 mb-2">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Preferred Days</label>
-                                        <select class="form-select" name="preferred_days">
-                                            <option value="">Any</option>
-                                            <option value="Sat/Tue">Sat/Tue</option>
-                                            <option value="Sun/Wed">Sun/Wed</option>
-                                            <option value="Mon/Thu">Mon/Thu</option>
+                                    @if($errors->any())
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            <strong>Please fix the following errors:</strong>
+                                            <ul class="mb-0 mt-2">
+                                                @foreach($errors->all() as $error)
+                                                    <li>{{ $error }}</li>
+                                                @endforeach
+                                            </ul>
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                        </div>
+                                    @endif
+
+                                    <!-- Course Selection -->
+                                    <div class="mb-4">
+                                        <label for="course_ids" class="form-label fw-bold">
+                                            <i class="bi bi-book me-2"></i>Select Courses <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select @error('course_ids') is-invalid @enderror" 
+                                                id="course_ids" 
+                                                name="course_ids[]" 
+                                                multiple 
+                                                required
+                                                style="min-height: 150px;">
+                                            @forelse($availableCourses as $course)
+                                                <option value="{{ $course->id }}" {{ in_array($course->id, old('course_ids', [])) ? 'selected' : '' }}>
+                                                    {{ $course->code }} - {{ $course->name }}
+                                                </option>
+                                            @empty
+                                                <option disabled>No courses available</option>
+                                            @endforelse
                                         </select>
+                                        @error('course_ids')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <div class="form-text">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Hold Ctrl/Cmd to select multiple courses, or use the search feature above
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Preferred Time</label>
-                                        <select class="form-select" name="preferred_time">
-                                            <option value="">Any</option>
-                                            <option value="Morning">Morning</option>
-                                            <option value="Noon">Noon</option>
-                                            <option value="Afternoon">Afternoon</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Notes</label>
-                                        <input type="text" class="form-control" name="notes"
-                                            placeholder="Additional notes..." maxlength="500">
+
+                                    <hr class="my-4">
+
+                                    <!-- Time Preferences -->
+                                    <h6 class="mb-3">
+                                        <i class="bi bi-clock me-2"></i>Time Preferences <span class="text-muted">(Optional)</span>
+                                    </h6>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Preferred Days</label>
+                                            <select class="form-select" name="preferred_days">
+                                                <option value="" {{ old('preferred_days') == '' ? 'selected' : '' }}>Any Day</option>
+                                                <option value="Sat/Tue" {{ old('preferred_days') == 'Sat/Tue' ? 'selected' : '' }}>Saturday / Tuesday</option>
+                                                <option value="Sun/Wed" {{ old('preferred_days') == 'Sun/Wed' ? 'selected' : '' }}>Sunday / Wednesday</option>
+                                                <option value="Mon/Thu" {{ old('preferred_days') == 'Mon/Thu' ? 'selected' : '' }}>Monday / Thursday</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Preferred Time</label>
+                                            <select class="form-select" name="preferred_time">
+                                                <option value="" {{ old('preferred_time') == '' ? 'selected' : '' }}>Any Time</option>
+                                                <option value="Morning" {{ old('preferred_time') == 'Morning' ? 'selected' : '' }}>Morning (8:00 - 12:00)</option>
+                                                <option value="Noon" {{ old('preferred_time') == 'Noon' ? 'selected' : '' }}>Noon (12:00 - 14:00)</option>
+                                                <option value="Afternoon" {{ old('preferred_time') == 'Afternoon' ? 'selected' : '' }}>Afternoon (14:00 - 18:00)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Additional Notes</label>
+                                            <input type="text" 
+                                                   class="form-control @error('notes') is-invalid @enderror" 
+                                                   name="notes"
+                                                   value="{{ old('notes') }}"
+                                                   placeholder="e.g., Prefer morning classes"
+                                                   maxlength="500">
+                                            @error('notes')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="form-text text-muted">Max 500 characters</small>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                        <i class="bi bi-x-circle me-1"></i>Cancel
+                                    </button>
+                                    <button type="submit" class="btn btn-primary-custom">
+                                        <i class="bi bi-check-circle me-1"></i>Save Preferences
+                                    </button>
+                                </div>
+                            </form>
+                        @else
+                            <div class="modal-header bg-warning">
+                                <h5 class="mb-0">No Active Semester</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body text-center py-5">
+                                <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">No Active Semester Available</h5>
+                                <p class="text-muted">Please contact the administrator to activate a semester before submitting preferences.</p>
+                            </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" class="btn btn-primary-custom">Save</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
-                        </form>
+                        @endif
                     </div>
                 </div>
             </div>

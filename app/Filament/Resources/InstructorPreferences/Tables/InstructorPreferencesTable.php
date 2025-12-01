@@ -14,7 +14,7 @@ class InstructorPreferencesTable
     {
         return $table
             ->columns([
-                TextColumn::make('instructor.name')
+                TextColumn::make('instructor.user.name')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('course.name')
