@@ -5,7 +5,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>{{ $title }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -22,6 +24,9 @@
         rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/css/style.css', 'resources/js/app.js'])
+
+    <!-- Responsive CSS for Mobile Devices -->
+    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
 </head>
 
 

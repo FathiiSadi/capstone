@@ -151,11 +151,13 @@
 
                     <!-- Recent Preferences -->
                     <div class="card card-custom">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5>Recent Preferences Submissions</h5>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <h5 class="mb-0">Recent Preferences Submissions</h5>
                             <div>
-                                <a href="{{ route('instructor.preferences') }}" class="btn btn-primary-custom btn-sm">Manage
-                                    Preferences</a>
+                                <a href="{{ route('instructor.preferences') }}" class="btn btn-primary-custom btn-sm">
+                                    <i class="bi bi-gear me-1"></i>
+                                    <span class="d-none d-sm-inline">Manage </span>Preferences
+                                </a>
                             </div>
                         </div>
 

@@ -26,14 +26,6 @@ Route::get('/auth/login', function () {
 
 // Protected routes - require authentication and instructor/admin role
 Route::middleware(['instructor.access'])->group(function () {
-    Route::get('/schedule', function () {
-        return view('/schedule');
-    });
-
-
-    Route::get('/home', function () {
-        return view('instructorHome');
-    })->name('instructor.home');
 
     Route::get('/preferences', [App\Http\Controllers\InstructorPreferenceController::class, 'index'])->name('instructor.preferences');
     Route::post('/preferences', [App\Http\Controllers\InstructorPreferenceController::class, 'store'])->name('instructor.preferences.store');

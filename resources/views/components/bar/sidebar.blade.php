@@ -12,7 +12,7 @@
                 {{-- Instructor/Admin menu --}}
                 <a href="/" class="nav-link">Home</a>
                 <a href="/preferences" class="nav-link">Instructor Preferences</a>
-                <a href="/schedule" class="nav-link">Schedule Generator</a>
+
                 <a href="/profile" class="nav-link">Profile</a>
                 <a href="/logout" class="nav-link">Logout</a>
             @else
