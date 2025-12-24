@@ -67,7 +67,6 @@ class InstructorPreferenceController extends Controller
             'course_ids.*' => 'exists:courses,id',
             'preferred_days' => 'nullable|string',
             'preferred_time' => 'nullable|string',
-            'notes' => 'nullable|string|max:500',
         ]);
 
         $user = auth()->user();
@@ -100,16 +99,13 @@ class InstructorPreferenceController extends Controller
                 ]);
 
                 // Create time slot preference if provided
-                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time']) || !empty($validated['notes'])) {
+                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
                     $daysInfo = [];
                     if (!empty($validated['preferred_days'])) {
                         $daysInfo[] = $validated['preferred_days'];
                     }
                     if (!empty($validated['preferred_time'])) {
                         $daysInfo[] = $validated['preferred_time'];
-                    }
-                    if (!empty($validated['notes'])) {
-                        $daysInfo[] = $validated['notes'];
                     }
 
                     PreferenceTimeSlot::create([
@@ -166,7 +162,6 @@ class InstructorPreferenceController extends Controller
             'course_ids.*' => 'exists:courses,id',
             'preferred_days' => 'nullable|string',
             'preferred_time' => 'nullable|string',
-            'notes' => 'nullable|string|max:500',
         ]);
 
         $user = auth()->user();
@@ -202,10 +197,6 @@ class InstructorPreferenceController extends Controller
                     if (!empty($validated['preferred_time'])) {
                         $daysInfo[] = $validated['preferred_time'];
                     }
-                    if (!empty($validated['notes'])) {
-                        $daysInfo[] = $validated['notes'];
-                    }
-
                     PreferenceTimeSlot::create([
                         'instructor_preference_id' => $preference->id,
                         'days' => implode(' - ', $daysInfo),

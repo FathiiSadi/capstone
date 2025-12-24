@@ -6,7 +6,6 @@
     'selectedCourseIds' => [],
     'preferredDays' => '',
     'preferredTime' => '',
-    'notes' => '',
     'semesterId' => null,
     'semesterName' => '',
     'isEdit' => false,
@@ -57,7 +56,7 @@
                     required
                     style="min-height: 150px;">
                 @forelse($availableCourses as $course)
-                    <option value="{{ $course->id }}" 
+                    <option value="{{ $course->id }}"
                         {{ in_array($course->id, $selectedCourseIds) ? 'selected' : '' }}>
                         {{ $course->code }} - {{ $course->name }}
                     </option>
@@ -99,20 +98,6 @@
                     <option value="Noon" {{ $preferredTime == 'Noon' ? 'selected' : '' }}>Noon (12:00 - 14:00)</option>
                     <option value="Afternoon" {{ $preferredTime == 'Afternoon' ? 'selected' : '' }}>Afternoon (14:00 - 18:00)</option>
                 </select>
-            </div>
-            <div class="col-12 col-md-4">
-                <label class="form-label">Additional Notes</label>
-                <input type="text"
-                       class="form-control @error('notes') is-invalid @enderror"
-                       name="notes"
-                       id="{{ $formId }}_notes"
-                       value="{{ $notes }}"
-                       placeholder="e.g., Prefer morning classes"
-                       maxlength="500">
-                @error('notes')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <small class="form-text text-muted">Max 500 characters</small>
             </div>
         </div>
     </div>
