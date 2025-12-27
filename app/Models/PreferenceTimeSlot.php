@@ -13,6 +13,11 @@ class PreferenceTimeSlot extends Model
     protected $fillable = [
         'instructor_preference_id',
         'days',
+        'start_time',
+    ];
+
+    protected $casts = [
+        'days' => 'array',
     ];
 
     public function preference(): BelongsTo

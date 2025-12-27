@@ -115,6 +115,7 @@ class ScheduleResource extends Resource
     {
         return [
             'index' => ScheduleResource\Pages\ListSchedules::route('/'),
+            'timetable' => ScheduleResource\Pages\Timetable::route('/timetable'),
         ];
     }
 }

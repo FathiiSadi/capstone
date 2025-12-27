@@ -31,28 +31,7 @@ class SectionsTable
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('deleted_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('deleted_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('ip_address')
-                    ->searchable(),
-                TextColumn::make('user_agent')
-                    ->searchable(),
+                    ->toggleable(isToggledHiddenByDefault: true)
             ])
             ->filters([
                 //
