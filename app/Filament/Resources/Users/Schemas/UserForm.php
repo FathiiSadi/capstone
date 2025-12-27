@@ -32,7 +32,8 @@ class UserForm
                     ->required(),
                 Select::make('department_id')
                     ->relationship('department', 'name')
-                    ->nullable(),
+                    ->nullable()
+                    ->required(),
 
         ]);
     }
