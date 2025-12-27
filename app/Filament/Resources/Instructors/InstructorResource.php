@@ -39,16 +39,17 @@ class InstructorResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\SectionsRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListInstructors::route('/'),
-            'create' => CreateInstructor::route('/create'),
-            'edit' => EditInstructor::route('/{record}/edit'),
+            'index' => Pages\ListInstructors::route('/'),
+            'create' => Pages\CreateInstructor::route('/create'),
+            'view' => Pages\ViewInstructor::route('/{record}'),
+            'edit' => Pages\EditInstructor::route('/{record}/edit'),
         ];
     }
 

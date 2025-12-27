@@ -35,7 +35,14 @@ class SectionForm
                 TimePicker::make('end_time')
                     ->required(),
                 Select::make('status')
-                    ->options(['Active' => 'Active', 'Inactive' => 'Inactive', 'Closed' => 'Closed'])
+                    ->options([
+                        'Active' => 'Active',
+                        'Allocated' => 'Allocated',
+                        'Underloaded' => 'Underloaded',
+                        'Admin Override' => 'Admin Override',
+                        'Inactive' => 'Inactive',
+                        'Closed' => 'Closed',
+                    ])
                     ->default('Active')
                     ->required(),
             ]);
