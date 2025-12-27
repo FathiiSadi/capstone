@@ -37,43 +37,67 @@
                         </div>
                     @endif
 
-                    <div class="row g-3 mb-3">
-                        <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3 h-100">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted">Total Courses</div>
-                                        <div class="kpi">{{ $totalCourses }}</div>
-                                    </div>
-                                    <div class="fs-3 text-primary"><i class="bi bi-journal-bookmark"></i></div>
-                                </div>
-                            </div>
-                        </div>
+        <!-- KPI Cards - Restyled -->
+<div class="row g-3 mb-3">
 
-                        <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3 h-100">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted">Assigned Sections</div>
-                                        <div class="kpi">{{ $totalSections > 0 ? $totalSections : '-' }}</div>
-                                    </div>
-                                    <div class="fs-3 text-success"><i class="bi bi-people"></i></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <div class="card card-custom p-3 h-100">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted">Current Load (C.H.)</div>
-                                        <div class="kpi">{{ $currentLoad }}</div>
-                                    </div>
-                                    <div class="fs-3 text-warning"><i class="bi bi-clock-history"></i></div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Total Courses -->
+    <div class="col-12 col-md-4">
+        <div class="card l-bg-cherry">
+            <div class="card-statistic-3 p-4">
+                <div class="card-icon card-icon-large"><i class="fas fa-book"></i></div>
+                <div class="mb-4">
+                    <h5 class="card-title mb-0">Total Courses</h5>
+                </div>
+                <div class="row align-items-center mb-2 d-flex">
+                    <div class="col-8">
+                        <h2 class="d-flex align-items-center mb-0">
+                            {{ $totalCourses }}
+                        </h2>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Sections -->
+    <div class="col-12 col-md-4">
+        <div class="card l-bg-blue-dark">
+            <div class="card-statistic-3 p-4">
+                <div class="card-icon card-icon-large"><i class="fas fa-users"></i></div>
+                <div class="mb-4">
+                    <h5 class="card-title mb-0">Assigned Sections</h5>
+                </div>
+                <div class="row align-items-center mb-2 d-flex">
+                    <div class="col-8">
+                        <h2 class="d-flex align-items-center mb-0">
+                            {{ $totalSections > 0 ? $totalSections : '-' }}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Load (C.H.) -->
+    <div class="col-12 col-md-4">
+        <div class="card l-bg-green-dark">
+            <div class="card-statistic-3 p-4">
+                <div class="card-icon card-icon-large"><i class="fas fa-clock"></i></div>
+                <div class="mb-4">
+                    <h5 class="card-title mb-0">Current Load (C.H.)</h5>
+                </div>
+                <div class="row align-items-center mb-2 d-flex">
+                    <div class="col-8">
+                        <h2 class="d-flex align-items-center mb-0">
+                            {{ $currentLoad }}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 
                     <div class="card card-custom mb-3">
