@@ -36,36 +36,52 @@ class DashboardController extends Controller
 
         $instructor = $user->instructor;
 
+        // --- Active Semester ---
+        $activeSemester = Semester::whereIn('status', ['Open', 'Running'])->first()
+            ?? Semester::orderBy('id', 'desc')->first();
+
         // --- Statistics ---
 
-        // Fetch sections assigned to the instructor with necessary relations
-        $assignedSections = $instructor
-            ? $instructor->sections()->with(['course', 'semester'])->get()
+        // Fetch sections assigned to the instructor for the active semester
+        $assignedSections = ($instructor && $activeSemester)
+            ? $instructor->sections()
+                ->where('semester_id', $activeSemester->id)
+                ->with(['course', 'semester'])
+                ->get()
             : collect();
 
-        // Calculate total unique courses
-        $totalCourses = $assignedSections->pluck('course_id')->unique()->count();
+        // Fetch preferences for the active semester
+        $preferences = ($instructor && $activeSemester)
+            ? InstructorPreference::where('instructor_id', $instructor->id)
+                ->where('semester_id', $activeSemester->id)
+                ->with('course')
+                ->get()
+            : collect();
 
         // Total assigned sections
         $totalSections = $assignedSections->count();
 
-        // Calculate current load (sum of credit hours)
-        $currentLoad = $assignedSections->sum(function ($section) {
-            return $section->course->credits ?? 0;
-        });
-
-        // --- Active Semester ---
-        // Fetch the currently open or running semester
-        $activeSemester = Semester::whereIn('status', ['Open', 'Running'])->first();
+        if ($totalSections > 0) {
+            // If sections are assigned, show data based on assignments
+            $totalCourses = $assignedSections->pluck('course_id')->unique()->count();
+            $currentLoad = $assignedSections->sum(function ($section) {
+                return $section->course->credits ?? 0;
+            });
+        } else {
+            // Otherwise show data based on preferences
+            $totalCourses = $preferences->pluck('course_id')->unique()->count();
+            $currentLoad = $preferences->sum(function ($pref) {
+                return $pref->course->credits ?? 0;
+            });
+        }
 
         // --- Recent Preferences ---
         $recentPreferences = collect();
         if ($instructor) {
-            // Fetch latest submissions, taking more than 5 to account for duplicates per semester
+            // Fetch latest submissions
             $recentPreferences = InstructorPreference::where('instructor_id', $instructor->id)
                 ->with(['semester'])
                 ->orderBy('submission_time', 'desc')
-                ->take(20)
                 ->get()
                 ->unique('semester_id') // Keep only the latest submission per semester
                 ->take(5);
