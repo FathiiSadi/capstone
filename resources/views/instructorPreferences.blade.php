@@ -76,16 +76,7 @@
                                     <td><span class="badge bg-success">Submitted</span></td>
                                     <td>
                                         <div class="d-flex flex-column flex-sm-row gap-1">
-                                            <button class="btn btn-sm btn-outline-secondary view-pref-btn"
-                                                data-semester-id="{{ $semesterId }}"
-                                                data-semester-name="{{ $pref['semester']->name ?? '' }} - {{ ucfirst($pref['semester']->type ?? '') }}"
-                                                data-submission-time="{{ $pref['submission_time']->format('Y-m-d H:i') }}"
-                                                data-courses='@json($pref['courses'])'
-                                                data-time-slots='@json($pref['time_slots'])' data-bs-toggle="modal"
-                                                data-bs-target="#viewPrefModal">
-                                                <i class="bi bi-eye"></i>
-                                                <span class="d-none d-md-inline ms-1">View</span>
-                                            </button>
+
                                             <form action="{{ route('instructor.preferences.destroy', $semesterId) }}"
                                                 method="POST" class="d-inline"
                                                 onsubmit="return confirm('Are you sure you want to delete these preferences?');">
@@ -121,8 +112,7 @@
                                 :action="route('instructor.preferences.store')" method="POST"
                                 :availableCourses="$availableCourses" :selectedCourseIds="old('course_ids', [])"
                                 :preferredDays="old('preferred_days', '')" :preferredTime="old('preferred_time', '')"
-                                :semesterName="$activeSemester->name . ' - ' . ucfirst($activeSemester->type)"
-                                :isEdit="false" />
+                                :semesterId="$activeSemester->id" :semesterName="$activeSemester->name . ' - ' . ucfirst($activeSemester->type)" :isEdit="false" />
                         @else
                             <div class="modal-header bg-warning">
                                 <h5 class="mb-0">No Active Semester</h5>
@@ -143,14 +133,7 @@
             </div>
 
 
-            <!-- VIEW PREFERENCES MODAL -->
-            <div class="modal fade" id="viewPrefModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <x-view-instructor-preferences />
-                    </div>
-                </div>
-            </div>
+
 
         </main>
     </div>
@@ -165,66 +148,12 @@
 
     <script>
         $(document).ready(function () {
-            // Initialize Select2 for add form
-            function initializeSelect2(selector) {
-                $(selector).select2({
-                    theme: 'bootstrap-5',
-                    placeholder: 'Select courses...',
-                    allowClear: true,
-                    width: '100%',
-                    dropdownParent: $(selector).closest('.modal')
-                });
-            }
-
             // Initialize Select2 for add modal
             $('#addPrefForm_course_ids').select2({
                 theme: 'bootstrap-5',
                 placeholder: 'Select courses...',
                 allowClear: true,
                 width: '100%'
-            });
-
-            // Handle View Preferences Modal
-            $('.view-pref-btn').on('click', function () {
-                const semesterName = $(this).data('semester-name');
-                const submissionTime = $(this).data('submission-time');
-                const courses = $(this).data('courses');
-                const timeSlots = $(this).data('time-slots');
-
-                // Update semester info
-                $('#view-semester-name').text(semesterName);
-                $('#view-submission-time').text(submissionTime);
-
-                // Display courses with beautiful badges
-                if (courses && courses.length > 0) {
-                    const coursesList = courses.map(course =>
-                        `<div class="col-md-6">
-                            <div class="course-badge">
-                                <strong>${course.code}</strong><br>
-                                <small>${course.name}</small>
-                            </div>
-                        </div>`
-                    ).join('');
-                    $('#view-courses-list').html(coursesList);
-                } else {
-                    $('#view-courses-list').html('<div class="col-12"><p class="text-muted text-center">No courses selected</p></div>');
-                }
-
-                // Display time slots with styled cards
-                if (timeSlots && timeSlots.length > 0) {
-                    const timeSlotsHtml = timeSlots.map(slot => {
-                        const parts = slot.days.split(' - ');
-                        return `<div class="time-preference-item">
-                            <i class="bi bi-clock-fill text-success me-2"></i>
-                            <strong>${parts[0] || 'Any Day'}</strong>
-                            ${parts[1] ? ` • <i class="bi bi-sun me-1"></i>${parts[1]}` : ''}
-                            ${parts[2] ? `<br><small class="text-muted ms-4"><i class="bi bi-sticky me-1"></i>${parts[2]}</small>` : ''}
-                        </div>`;
-                    }).join('');
-                    $('#view-time-slots').html(timeSlotsHtml);
-                } else {
-                    $('#view-time-slots').html('<p class="text-muted"><i class="bi bi-info-circle me-2"></i>No time preferences specified</p>');
-                }
             });
 
             // Reset add form when modal is closed
