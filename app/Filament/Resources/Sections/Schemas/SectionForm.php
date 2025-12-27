@@ -21,13 +21,14 @@ class SectionForm
                     ->required(),
                 Select::make('days')
                     ->options([
-            'Sunday' => 'Sunday',
-            'Monday' => 'Monday',
-            'Tuesday' => 'Tuesday',
-            'Wednesday' => 'Wednesday',
-            'Thursday' => 'Thursday',
-            'Saturday' => 'Saturday',
-        ])
+                        'Sunday' => 'Sunday',
+                        'Monday' => 'Monday',
+                        'Tuesday' => 'Tuesday',
+                        'Wednesday' => 'Wednesday',
+                        'Thursday' => 'Thursday',
+                        'Saturday' => 'Saturday',
+                    ])
+                    ->multiple()
                     ->required(),
                 TimePicker::make('start_time')
                     ->required(),
@@ -37,14 +38,6 @@ class SectionForm
                     ->options(['Active' => 'Active', 'Inactive' => 'Inactive', 'Closed' => 'Closed'])
                     ->default('Active')
                     ->required(),
-                TextInput::make('created_by')
-                    ->numeric(),
-                TextInput::make('updated_by')
-                    ->numeric(),
-                TextInput::make('deleted_by')
-                    ->numeric(),
-                TextInput::make('ip_address'),
-                TextInput::make('user_agent'),
             ]);
     }
 }

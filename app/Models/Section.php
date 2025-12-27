@@ -20,6 +20,10 @@ class Section extends Model
         'status',
     ];
 
+    protected $casts = [
+        'days' => 'array',
+    ];
+
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);

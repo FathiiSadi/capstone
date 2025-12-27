@@ -4,8 +4,8 @@
     'method' => 'POST',
     'availableCourses' => [],
     'selectedCourseIds' => [],
-    'preferredDays' => '',
-    'preferredTime' => '',
+    'preferredDays' => [],
+    'preferredTime' => [],
     'semesterId' => null,
     'semesterName' => '',
     'isEdit' => false,
@@ -83,20 +83,19 @@
         <div class="row g-3">
             <div class="col-12 col-md-4">
                 <label class="form-label">Preferred Days</label>
-                <select class="form-select" name="preferred_days" id="{{ $formId }}_preferred_days">
-                    <option value="" {{ $preferredDays == '' ? 'selected' : '' }}>Any Day</option>
-                    <option value="Sat/Tue" {{ $preferredDays == 'Sat/Tue' ? 'selected' : '' }}>Saturday / Tuesday</option>
-                    <option value="Sun/Wed" {{ $preferredDays == 'Sun/Wed' ? 'selected' : '' }}>Sunday / Wednesday</option>
-                    <option value="Mon/Thu" {{ $preferredDays == 'Mon/Thu' ? 'selected' : '' }}>Monday / Thursday</option>
+                <select class="form-select" name="preferred_days[]" id="{{ $formId }}_preferred_days" multiple>
+                    <option value="Sat/Tue" {{ in_array('Sat/Tue', $preferredDays) ? 'selected' : '' }}>Saturday / Tuesday</option>
+                    <option value="Sun/Wed" {{ in_array('Sun/Wed', $preferredDays) ? 'selected' : '' }}>Sunday / Wednesday</option>
+                    <option value="Mon/Thu" {{ in_array('Mon/Thu', $preferredDays) ? 'selected' : '' }}>Monday / Thursday</option>
                 </select>
+                <div class="form-text">Reference: Hold Ctrl/Cmd to select multiple</div>
             </div>
             <div class="col-12 col-md-4">
                 <label class="form-label">Preferred Time</label>
-                <select class="form-select" name="preferred_time" id="{{ $formId }}_preferred_time">
-                    <option value="" {{ $preferredTime == '' ? 'selected' : '' }}>Any Time</option>
-                    <option value="Morning" {{ $preferredTime == 'Morning' ? 'selected' : '' }}>Morning (8:00 - 12:00)</option>
-                    <option value="Noon" {{ $preferredTime == 'Noon' ? 'selected' : '' }}>Noon (12:00 - 14:00)</option>
-                    <option value="Afternoon" {{ $preferredTime == 'Afternoon' ? 'selected' : '' }}>Afternoon (14:00 - 18:00)</option>
+                <select class="form-select" name="preferred_time[]" id="{{ $formId }}_preferred_time" multiple>
+                    <option value="Morning" {{ in_array('Morning', $preferredTime) ? 'selected' : '' }}>Morning (8:00 - 12:00)</option>
+                    <option value="Noon" {{ in_array('Noon', $preferredTime) ? 'selected' : '' }}>Noon (12:00 - 14:00)</option>
+                    <option value="Afternoon" {{ in_array('Afternoon', $preferredTime) ? 'selected' : '' }}>Afternoon (14:00 - 18:00)</option>
                 </select>
             </div>
         </div>

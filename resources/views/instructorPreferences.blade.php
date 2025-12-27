@@ -115,7 +115,7 @@
                             <x-instructor-preference-form formId="addPrefForm"
                                 :action="route('instructor.preferences.store')" method="POST"
                                 :availableCourses="$availableCourses" :selectedCourseIds="old('course_ids', [])"
-                                :preferredDays="old('preferred_days', '')" :preferredTime="old('preferred_time', '')"
+                                :preferredDays="old('preferred_days', [])" :preferredTime="old('preferred_time', [])"
                                 :semesterId="$activeSemester->id" :semesterName="$activeSemester->name . ' - ' . ucfirst($activeSemester->type)" :isEdit="false" />
                         @else
                             <div class="modal-header bg-warning">
@@ -152,7 +152,7 @@
 
     <script>
         $(document).ready(function () {
-            // Initialize Select2 for add modal
+            // Initialize Select2 for courses
             $('#addPrefForm_course_ids').select2({
                 theme: 'bootstrap-5',
                 placeholder: 'Select courses...',
@@ -160,11 +160,26 @@
                 width: '100%'
             });
 
+            $('#addPrefForm_preferred_days').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select days...',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Initialize Select2 for time
+            $('#addPrefForm_preferred_time').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select time...',
+                allowClear: true,
+                width: '100%'
+            });
+
             // Reset add form when modal is closed
             $('#addPrefModal').on('hidden.bs.modal', function () {
                 $('#addPrefForm_course_ids').val(null).trigger('change');
-                $('#addPrefForm_preferred_days').val('');
-                $('#addPrefForm_preferred_time').val('');
+                $('#addPrefForm_preferred_days').val(null).trigger('change');
+                $('#addPrefForm_preferred_time').val(null).trigger('change');
             });
         });
     </script>

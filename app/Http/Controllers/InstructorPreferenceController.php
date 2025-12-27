@@ -65,8 +65,8 @@ class InstructorPreferenceController extends Controller
             'semester_id' => 'required|exists:semesters,id',
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
-            'preferred_days' => 'nullable|string',
-            'preferred_time' => 'nullable|string',
+            'preferred_days' => 'nullable|array',
+            'preferred_time' => 'nullable|array',
         ]);
 
         $user = auth()->user();
@@ -100,17 +100,17 @@ class InstructorPreferenceController extends Controller
 
                 // Create time slot preference if provided
                 if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
-                    $daysInfo = [];
+                    $parts = [];
                     if (!empty($validated['preferred_days'])) {
-                        $daysInfo[] = $validated['preferred_days'];
+                        $parts[] = implode(', ', $validated['preferred_days']);
                     }
                     if (!empty($validated['preferred_time'])) {
-                        $daysInfo[] = $validated['preferred_time'];
+                        $parts[] = implode(', ', $validated['preferred_time']);
                     }
 
                     PreferenceTimeSlot::create([
                         'instructor_preference_id' => $preference->id,
-                        'days' => implode(' - ', $daysInfo),
+                        'days' => implode(' - ', $parts),
                     ]);
                 }
             }
@@ -166,8 +166,8 @@ class InstructorPreferenceController extends Controller
         $validated = $request->validate([
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
-            'preferred_days' => 'nullable|string',
-            'preferred_time' => 'nullable|string',
+            'preferred_days' => 'nullable|array',
+            'preferred_time' => 'nullable|array',
         ]);
 
         $user = auth()->user();
@@ -196,16 +196,16 @@ class InstructorPreferenceController extends Controller
 
                 // Create time slot preference if provided
                 if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
-                    $daysInfo = [];
+                    $parts = [];
                     if (!empty($validated['preferred_days'])) {
-                        $daysInfo[] = $validated['preferred_days'];
+                        $parts[] = implode(', ', $validated['preferred_days']);
                     }
                     if (!empty($validated['preferred_time'])) {
-                        $daysInfo[] = $validated['preferred_time'];
+                        $parts[] = implode(', ', $validated['preferred_time']);
                     }
                     PreferenceTimeSlot::create([
                         'instructor_preference_id' => $preference->id,
-                        'days' => implode(' - ', $daysInfo),
+                        'days' => implode(' - ', $parts),
                     ]);
                 }
             }
