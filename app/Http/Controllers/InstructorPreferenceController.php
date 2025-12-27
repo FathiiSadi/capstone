@@ -130,6 +130,9 @@ class InstructorPreferenceController extends Controller
     /**
      * Show specific preference details
      */
+    /**
+     * Show specific preference details
+     */
     public function show($semesterId)
     {
         $user = auth()->user();
@@ -144,12 +147,15 @@ class InstructorPreferenceController extends Controller
             return back()->with('error', 'Preferences not found.');
         }
 
-        return response()->json([
+        // Format data for the view
+        $preferenceData = [
             'semester' => $preferences->first()->semester,
             'submission_time' => $preferences->first()->submission_time,
             'courses' => $preferences->pluck('course'),
             'time_slots' => $preferences->flatMap->timeSlots->unique('days'),
-        ]);
+        ];
+
+        return view('profile', compact('user', 'preferenceData'));
     }
 
     /**

@@ -76,7 +76,11 @@
                                     <td><span class="badge bg-success">Submitted</span></td>
                                     <td>
                                         <div class="d-flex flex-column flex-sm-row gap-1">
-
+                                            <a href="{{ route('instructor.preferences.show', $semesterId) }}"
+                                                class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-eye"></i>
+                                                <span class="d-none d-md-inline ms-1">View</span>
+                                            </a>
                                             <form action="{{ route('instructor.preferences.destroy', $semesterId) }}"
                                                 method="POST" class="d-inline"
                                                 onsubmit="return confirm('Are you sure you want to delete these preferences?');">

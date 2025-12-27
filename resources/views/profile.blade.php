@@ -78,6 +78,7 @@
                     </div>
                 </div>
             </div>
+            @include('partials.preferences-on-profile')
         </main>
     </div>
 </x-layout>
