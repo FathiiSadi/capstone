@@ -155,7 +155,7 @@
                                                 <div class="small text-muted">{{ $section->course->name }}</div>
                                             </td>
                                             <td>{{ $section->id }}</td> {{-- Or section number if you have a column for it --}}
-                                            <td>{{ $section->days }}</td>
+                                            <td>{{ is_array($section->days) ? implode(', ', $section->days) : $section->days }}</td>
                                             <td>{{ \Carbon\Carbon::parse($section->start_time)->format('H:i') }} -
                                                 {{ \Carbon\Carbon::parse($section->end_time)->format('H:i') }}</td>
                                             <td>{{ $section->room ?? 'TBA' }}</td>

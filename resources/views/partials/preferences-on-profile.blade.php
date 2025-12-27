@@ -57,6 +57,9 @@
                             @foreach($preferenceData['time_slots'] as $slot)
                                 @php
                                     $days = $slot->days ?? $slot->preferred_days ?? 'Any Day';
+                                    if (is_array($days)) {
+                                        $days = implode(', ', $days);
+                                    }
                                     $time = $slot->time ?? $slot->preferred_time ?? '';
                                     // Compatibility check for concatenated format
                                     if ($days && str_contains($days, ' - ') && empty($time)) {

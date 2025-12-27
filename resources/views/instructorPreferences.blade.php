@@ -67,7 +67,8 @@
                                     </td>
                                     <td>
                                         @if($pref['time_slots']->isNotEmpty())
-                                            <small class="text-muted">{{ $pref['time_slots']->first()->days }}</small>
+                                            <small
+                                                class="text-muted">{{ is_array($pref['time_slots']->first()->days) ? implode(', ', $pref['time_slots']->first()->days) : $pref['time_slots']->first()->days }}</small>
                                         @else
                                             <small class="text-muted">No preference</small>
                                         @endif
