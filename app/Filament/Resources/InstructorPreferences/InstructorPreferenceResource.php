@@ -18,9 +18,9 @@ class InstructorPreferenceResource extends Resource
 {
     protected static ?string $model = InstructorPreference::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-horizontal';
 
-    protected static ?string $recordTitleAttribute = 'id';
+    protected static string|\UnitEnum|null $navigationGroup = 'Scheduling';
 
     public static function form(Schema $schema): Schema
     {

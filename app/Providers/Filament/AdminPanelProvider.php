@@ -29,14 +29,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('Qalam')
             ->colors([
                 'danger' => Color::Rose,
-                'gray' => Color::Gray,
-                'info' => Color::Blue,
-                'primary' => Color::Indigo,
+                'gray' => Color::Slate,
+                'info' => Color::Cyan,
+                'primary' => Color::Violet,
                 'success' => Color::Emerald,
-                'warning' => Color::Orange,
-
+                'warning' => Color::Amber,
             ])
             ->font(
                 'Open Sans',

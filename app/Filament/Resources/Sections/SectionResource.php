@@ -18,9 +18,9 @@ class SectionResource extends Resource
 {
     protected static ?string $model = Section::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
-    protected static ?string $recordTitleAttribute = 'id';
+    protected static string|\UnitEnum|null $navigationGroup = 'Scheduling';
 
     public static function form(Schema $schema): Schema
     {

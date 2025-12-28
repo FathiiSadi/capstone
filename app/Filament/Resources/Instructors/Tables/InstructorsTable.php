@@ -18,15 +18,35 @@ class InstructorsTable
     {
         return $table
             ->columns([
-                TextColumn::make('user.name'),
-                TextColumn::make('user.email')->label('Email'),
-                TextColumn::make('position'),
-                TextColumn::make('min_credits'),
+                \Filament\Tables\Columns\IconColumn::make('load_status')
+                    ->label('Load Met')
+                    ->getStateUsing(function (\App\Models\Instructor $record) {
+                        $totalCredits = $record->sections->sum(fn($s) => $s->course->credits ?? 0);
+                        if ($totalCredits == 0)
+                            return null;
+                        return $totalCredits >= $record->min_credits;
+                    })
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')->trueColor('success')
+                    ->falseIcon('heroicon-o-x-circle')->falseColor('danger')
+                    ->placeholder('Hold'),
+                TextColumn::make('user.name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('user.email')
+                    ->label('Email')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('position')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('min_credits')
+                    ->sortable(),
 
 
             ])
             ->filters([
-//                TrashedFilter::make(),
+                //                TrashedFilter::make(),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -22,9 +22,9 @@ class InstructorResource extends Resource
 
     protected static ?string $model = Instructor::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?string $recordTitleAttribute = 'Instructor';
+    protected static string|\UnitEnum|null $navigationGroup = 'Academic Management';
 
     public static function form(Schema $schema): Schema
     {
