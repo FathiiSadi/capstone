@@ -43,6 +43,23 @@ class TimeConflictChecker
      */
     public function getDayPair(string $day): array
     {
+        // Support both "Sunday" and "Sun/Wed" formats
+        if (str_contains($day, '/')) {
+            $parts = explode('/', $day);
+            $mapping = [
+                'Sun' => 'Sunday',
+                'Wed' => 'Wednesday',
+                'Mon' => 'Monday',
+                'Thu' => 'Thursday',
+                'Tue' => 'Tuesday',
+                'Sat' => 'Saturday'
+            ];
+            return [
+                $mapping[$parts[0]] ?? $parts[0],
+                $mapping[$parts[1]] ?? $parts[1]
+            ];
+        }
+
         $pairs = [
             'Sunday' => ['Sunday', 'Wednesday'],
             'Wednesday' => ['Sunday', 'Wednesday'],

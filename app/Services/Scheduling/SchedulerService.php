@@ -66,10 +66,23 @@ class SchedulerService
             // Validate the schedule
             $isValid = $this->validateSchedule($semester, $options['strict_mode']);
 
-            // Generate admin notifications
-            $notifications = $this->generateNotifications($allocationResult, $underloadedInstructors);
-
             DB::commit();
+
+            // Refresh allocation result to show updated counts from BOTH passes
+            $finalAssignedCount = Section::where('semester_id', $semester->id)->count();
+            $finalUnassignedCourses = $this->getUnassignedCourses($semester);
+
+            $allocationResult = new \App\Services\Scheduling\DTOs\AllocationResult(
+                totalSectionsAssigned: $finalAssignedCount,
+                totalPreferencesProcessed: $allocationResult->totalPreferencesProcessed,
+                totalPreferencesSkipped: $allocationResult->totalPreferencesSkipped,
+                unassignedCourses: $finalUnassignedCourses,
+                skipReasons: $allocationResult->skipReasons,
+                statistics: $allocationResult->statistics
+            );
+
+            // Generate admin notifications based on FINAL results
+            $notifications = $this->generateNotifications($allocationResult, $underloadedInstructors);
 
             $result = new SchedulingResult(
                 allocationResult: $allocationResult,
@@ -79,7 +92,7 @@ class SchedulerService
             );
 
             Log::info("Schedule generation completed", [
-                'sections_assigned' => $allocationResult->totalSectionsAssigned,
+                'sections_assigned' => $finalAssignedCount,
                 'underloaded_count' => $underloadedInstructors->count(),
                 'is_valid' => $isValid,
             ]);
@@ -405,22 +418,21 @@ class SchedulerService
             ->with(['sections' => fn($q) => $q->where('semester_id', $semester->id)])
             ->get();
 
-        // Rule 1: Filter out instructors who already have 2 sections of this course
-        // Rule 2: Only allow a 2nd section if they are currently underloaded
+        // Rule 1: Only allow instructors who are STILL UNDERLOADED
         return $eligibleInstructors->filter(function ($instructor) use ($course, $semester) {
+            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+                return false;
+            }
+
             $count = Section::query()
                 ->where('semester_id', $semester->id)
                 ->where('instructor_id', $instructor->id)
                 ->where('course_id', $course->id)
                 ->count();
 
+            // Rule 2: Max 2 sections per course
             if ($count >= 2) {
                 return false;
-            }
-
-            if ($count == 1) {
-                // Allow a 2nd section ONLY if they are still underloaded
-                return $this->creditCalculator->isUnderloaded($instructor, $semester);
             }
 
             return true;
@@ -461,10 +473,15 @@ class SchedulerService
 
         if ($currentCredits + $courseCredits > $maxCredits) {
             Log::info("Least-chosen skipping instructor: Capacity reached", [
-                'instructor' => $instructor->name,
+                'instructor' => $instructor->user->name ?? "ID: {$instructor->id}",
                 'current' => $currentCredits,
                 'max' => $maxCredits
             ]);
+            return false;
+        }
+
+        // Re-check stopping condition before each assignment
+        if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
             return false;
         }
 
@@ -482,9 +499,16 @@ class SchedulerService
                 continue;
             }
 
+            // Calculate section number for this course in this semester
+            $existingCount = Section::where('course_id', $course->id)
+                ->where('semester_id', $semester->id)
+                ->count();
+            $sectionNumber = "S" . ($existingCount + 1);
+
             // Assign the section (pair)
             Section::create([
                 'course_id' => $course->id,
+                'section_number' => $sectionNumber,
                 'semester_id' => $semester->id,
                 'instructor_id' => $instructor->id,
                 'days' => $daysToAssign,
@@ -495,8 +519,9 @@ class SchedulerService
 
             $daysString = implode(', ', $daysToAssign);
             Log::info("Least-chosen course assigned", [
-                'instructor' => $instructor->name,
+                'instructor' => $instructor->user->name ?? "ID: {$instructor->id}",
                 'course' => $course->name,
+                'section' => $sectionNumber,
                 'days' => $daysString,
                 'time' => "{$slot['start']} - {$endTime}",
             ]);

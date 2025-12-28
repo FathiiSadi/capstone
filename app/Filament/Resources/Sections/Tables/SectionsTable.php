@@ -15,7 +15,17 @@ class SectionsTable
         return $table
             ->columns([
                 TextColumn::make('course.name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('section_number')
+                    ->label('S#')
+                    ->sortable()
                     ->searchable(),
+                TextColumn::make('instructor.user.name')
+                    ->label('Instructor')
+                    ->placeholder('Unassigned')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('semester.name')
                     ->searchable(),
                 TextColumn::make('days')

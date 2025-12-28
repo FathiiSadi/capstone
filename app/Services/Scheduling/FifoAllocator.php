@@ -81,33 +81,30 @@ class FifoAllocator
         $instructor = $preference->instructor;
         $course = $preference->course;
 
-        // Rule 1: Department Qualification Check
+        // Requirement: Once an instructor reaches their minimum required credit hours, stop assigning them sections.
+        if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+            $this->skipPreference($preference, "Stopping Condition: Instructor already reached min credits.");
+            return;
+        }
+
+        // Rule: Department Qualification Check
         if (!$this->canAssignCourse($instructor, $course)) {
             $this->skipPreference($preference, 'Department qualification rule: Instructor not in course department');
             return;
         }
 
-        // Rule 2: Section Limit & Underload-Filling Check
+        // Rule: Section Limit (Max 2 sections of the same course)
         $currentAssignmentCount = $this->getCourseAssignmentCount($instructor, $course, $semester);
-        $currentCredits = $this->creditCalculator->calculateTotalCredits($instructor, $semester);
-        $minimumCredits = $this->creditCalculator->getMinimumCredits($instructor, $semester);
-        $maxCredits = $this->creditCalculator->getMaxCredits($instructor);
-        $courseCredits = (float) ($course->credits ?? 3.0);
-
-        if ($currentAssignmentCount >= 1) {
-            // If they already have 1 section, only allow a 2nd if they are STILL underloaded
-            if ($currentCredits >= $minimumCredits) {
-                $this->skipPreference($preference, "Section limit: Instructor already meets minimum load ({$currentCredits} >= {$minimumCredits}) and has 1 section of this course.");
-                return;
-            }
-
-            if ($currentAssignmentCount >= 2) {
-                $this->skipPreference($preference, 'Section limit reached: Max 2 sections per course.');
-                return;
-            }
+        if ($currentAssignmentCount >= 2) {
+            $this->skipPreference($preference, 'Section limit reached: Max 2 sections per course.');
+            return;
         }
 
-        // Rule 3: Hard Credit Capacity Check
+        // Rule: Hard Credit Capacity Check (18.0)
+        $currentCredits = $this->creditCalculator->calculateTotalCredits($instructor, $semester);
+        $courseCredits = (float) ($course->credits ?? 3.0);
+        $maxCredits = $this->creditCalculator->getMaxCredits($instructor);
+
         if ($currentCredits + $courseCredits > $maxCredits) {
             $this->skipPreference($preference, "C.H. limit reached: Allocation would exceed hard cap of {$maxCredits}.");
             return;
@@ -117,25 +114,43 @@ class FifoAllocator
         $timeSlots = $preference->timeSlots;
 
         if ($timeSlots->isEmpty()) {
-            $this->skipPreference($preference, 'No time slots specified');
+            // Assign to any available slot if no preference? 
+            // The request says "Match instructor preferences first".
+            // If they didn't specify, maybe we should skip or use defaults.
+            // Let's try assigning defaults if no slot specified.
+            $this->tryAssignDefaultSlots($instructor, $course, $semester);
             return;
         }
 
-        $assigned = false;
+        $assignedCountThisPass = 0;
         foreach ($timeSlots as $timeSlot) {
-            // Check if we've already assigned 2 sections
+            // Check if we've already assigned 2 sections of THIS course
             if ($this->getCourseAssignmentCount($instructor, $course, $semester) >= 2) {
+                break;
+            }
+
+            // Check if instructor reached min credits inside the loop
+            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
                 break;
             }
 
             // Try to assign this time slot
             if ($this->tryAssignTimeSlot($instructor, $course, $timeSlot, $semester)) {
-                $assigned = true;
-                // Don't break - allow up to 2 sections per preference
+                $assignedCountThisPass++;
             }
         }
 
-        if (!$assigned) {
+        // REQUIREMENT: If still underloaded and haven't reached 2 sections, try other available slots for this course
+        if (
+            $this->creditCalculator->isUnderloaded($instructor, $semester) &&
+            $this->getCourseAssignmentCount($instructor, $course, $semester) < 2
+        ) {
+            if ($this->tryAssignDefaultSlots($instructor, $course, $semester)) {
+                $assignedCountThisPass++;
+            }
+        }
+
+        if ($assignedCountThisPass === 0) {
             $this->preferencesSkipped++;
         }
     }
@@ -149,55 +164,104 @@ class FifoAllocator
         $timeSlot,
         Semester $semester
     ): bool {
-        // Get the days from the time slot
+        // days is now more likely to be an array from my controller update
         $daysValue = $timeSlot->days;
-
-        // If it's a JSON string (due to older data or mismatch), decode it
-        if (is_string($daysValue) && (str_starts_with($daysValue, '[') || str_starts_with($daysValue, '{'))) {
-            $daysValue = json_decode($daysValue, true);
+        if (is_string($daysValue)) {
+            $decoded = json_decode($daysValue, true);
+            $daysValue = $decoded ?: [$daysValue];
         }
 
-        $daysRequested = is_array($daysValue) ? $daysValue : [$daysValue];
+        $dayPatterns = is_array($daysValue) ? $daysValue : ['Sun/Wed'];
 
-        // Process each day in the preference
-        foreach ($daysRequested as $requestedDay) {
-            // UNIVERSITY RULE: Every section is assigned as a PAIR
-            // Sunday-Wednesday, Monday-Thursday, Tuesday-Saturday
-            $daysToAssign = $this->conflictChecker->getDayPair($requestedDay);
+        // Map preferred time ranges to specific slots
+        // Morning: 08:30–11:30
+        // Noon: 11:30–14:30
+        // Afternoon: 14:30–17:30
+        // Each lecture is 1.5 hours. So each range has 2 possible 1.5h slots.
 
-            // Check section quota for this course/semester
-            if (!$this->hasAvailableSectionQuota($course, $semester)) {
-                $this->logSkip($timeSlot->id, 'Section quota exceeded for course');
-                continue;
-            }
+        $baseStartTime = $timeSlot->start_time;
+        $slotsToTry = [];
 
-            // Calculate end time based on course hours
-            $startTime = $timeSlot->start_time ?? '08:30:00';
-            $endTime = $this->conflictChecker->calculateEndTime($startTime, (float) ($course->hours ?? 3.0));
-
-            // Check if within teaching day
-            if (!$this->conflictChecker->isWithinTeachingDay($startTime, $endTime)) {
-                $this->logSkip($timeSlot->id, 'Time slot outside teaching hours');
-                continue;
-            }
-
-            // Get instructor's existing sections
-            $existingSections = $instructor->sections()
-                ->where('semester_id', $semester->id)
-                ->get();
-
-            // Rule 3: Time Conflict Check on BOTH days of the pair
-            if ($this->conflictChecker->hasConflict($daysToAssign, $startTime, $endTime, $existingSections)) {
-                $daysString = implode(' & ', $daysToAssign);
-                $this->logSkip($timeSlot->id, "Time conflict on {$daysString} at {$startTime}");
-                continue;
-            }
-
-            // All checks passed - assign the section (pair)
-            $this->assignSection($instructor, $course, $semester, $daysToAssign, $startTime, $endTime);
-            return true;
+        if ($baseStartTime === '08:30:00') {
+            $slotsToTry = ['08:30:00', '10:00:00'];
+        } elseif ($baseStartTime === '11:30:00' || $baseStartTime === '12:00:00') {
+            $slotsToTry = ['11:30:00', '13:00:00'];
+        } elseif ($baseStartTime === '14:30:00' || $baseStartTime === '14:00:00') {
+            $slotsToTry = ['14:30:00', '16:00:00'];
+        } else {
+            $slotsToTry = [$baseStartTime ?: '08:30:00'];
         }
 
+        foreach ($dayPatterns as $pattern) {
+            $daysToAssign = $this->conflictChecker->getDayPair($pattern);
+
+            foreach ($slotsToTry as $startTime) {
+                if ($this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $startTime, $timeSlot->id)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Helper to attempt a single assignment.
+     */
+    protected function attemptAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): bool
+    {
+        // Check section quota for this course/semester
+        if (!$this->hasAvailableSectionQuota($course, $semester)) {
+            $this->logSkip($timeSlotId, 'Section quota exceeded for course');
+            return false;
+        }
+
+        // Calculate end time
+        $endTime = $this->conflictChecker->calculateEndTime($startTime, (float) ($course->hours ?? 1.5));
+
+        // Check if within teaching day
+        if (!$this->conflictChecker->isWithinTeachingDay($startTime, $endTime)) {
+            return false;
+        }
+
+        // Get instructor's existing sections
+        $existingSections = $instructor->sections()
+            ->where('semester_id', $semester->id)
+            ->get();
+
+        // Check for conflicts
+        if ($this->conflictChecker->hasConflict($days, $startTime, $endTime, $existingSections)) {
+            return false;
+        }
+
+        // Check if instructor already has a section of THIS course at THIS time (even on diff days? 
+        // User said: "Sections have different time slots (even on the same day pattern)")
+        // This implies they can't have AI at 08:30 and AI at 08:30 again.
+
+        $this->assignSection($instructor, $course, $semester, $days, $startTime, $endTime);
+        return true;
+    }
+
+    /**
+     * Try to assign default slots if no preference provided.
+     */
+    protected function tryAssignDefaultSlots(Instructor $instructor, Course $course, Semester $semester): bool
+    {
+        $patterns = ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
+        $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
+
+        foreach ($patterns as $pattern) {
+            foreach ($times as $startTime) {
+                // Also check if they reached min credits inside the loop
+                if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+                    return false;
+                }
+
+                if ($this->attemptAssignment($instructor, $course, $semester, $this->conflictChecker->getDayPair($pattern), $startTime, 0)) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -262,8 +326,15 @@ class FifoAllocator
         string $startTime,
         string $endTime
     ): void {
+        // Calculate section number for this course in this semester
+        $existingCount = Section::where('course_id', $course->id)
+            ->where('semester_id', $semester->id)
+            ->count();
+        $sectionNumber = "S" . ($existingCount + 1);
+
         Section::create([
             'course_id' => $course->id,
+            'section_number' => $sectionNumber,
             'semester_id' => $semester->id,
             'instructor_id' => $instructor->id,
             'days' => $days,
@@ -276,8 +347,9 @@ class FifoAllocator
 
         $daysString = implode(', ', $days);
         Log::info("Section assigned", [
-            'instructor' => $instructor->name,
+            'instructor' => $instructor->user->name ?? "ID: {$instructor->id}",
             'course' => $course->name,
+            'section' => $sectionNumber,
             'days' => $daysString,
             'time' => "{$startTime} - {$endTime}",
         ]);
@@ -290,7 +362,7 @@ class FifoAllocator
     {
         $this->preferencesSkipped++;
 
-        $key = "{$preference->instructor->name} - {$preference->course->name}";
+        $key = ($preference->instructor->user->name ?? "ID: {$preference->instructor->id}") . " - {$preference->course->name}";
         $this->skipReasons[$key] = $reason;
 
         Log::info("Preference skipped", [

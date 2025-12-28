@@ -15,10 +15,19 @@ class SectionForm
             ->components([
                 Select::make('course_id')
                     ->relationship('course', 'name')
-                    ->required(),
+                    ->required()
+                    ->live(),
+                TextInput::make('section_number')
+                    ->label('Section Number')
+                    ->placeholder('e.g. S1, S2')
+                    ->maxLength(20),
                 Select::make('semester_id')
                     ->relationship('semester', 'name')
                     ->required(),
+                Select::make('instructor_id')
+                    ->relationship('instructor.user', 'name')
+                    ->label('Instructor')
+                    ->placeholder('Select Instructor (Optional)'),
                 Select::make('days')
                     ->options([
                         'Sunday' => 'Sunday',

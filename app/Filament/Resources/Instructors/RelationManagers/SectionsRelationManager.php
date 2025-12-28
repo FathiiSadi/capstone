@@ -8,6 +8,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
@@ -37,7 +38,7 @@ class SectionsRelationManager extends RelationManager
                     ->label('Course Name')
                     ->searchable(),
 
-                TextColumn::make('id')
+                TextColumn::make('section_number')
                     ->label('Section #'),
 
                 TextColumn::make('days')
@@ -56,7 +57,7 @@ class SectionsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                // Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
             ->actions([
                 EditAction::make(),
