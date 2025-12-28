@@ -43,6 +43,12 @@ class SectionForm
                     ->required(),
                 TimePicker::make('end_time')
                     ->required(),
+                Select::make('room_id')
+                    ->relationship('room', 'name')
+                    ->label('Room')
+                    ->placeholder('Select Room (Optional)')
+                    ->preload()
+                    ->searchable(),
                 Select::make('status')
                     ->options([
                         'Active' => 'Active',

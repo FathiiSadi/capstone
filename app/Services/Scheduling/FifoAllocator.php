@@ -332,6 +332,9 @@ class FifoAllocator
             ->count();
         $sectionNumber = "S" . ($existingCount + 1);
 
+        // Find a suitable room
+        $room = $this->findAvailableRoom($course, $days, $startTime, $endTime, $semester);
+
         Section::create([
             'course_id' => $course->id,
             'section_number' => $sectionNumber,
@@ -340,19 +343,53 @@ class FifoAllocator
             'days' => $days,
             'start_time' => $startTime,
             'end_time' => $endTime,
+            'room_id' => $room?->id,
             'status' => 'Active',
         ]);
 
         $this->sectionsAssigned++;
 
         $daysString = implode(', ', $days);
+        $roomInfo = $room ? " in {$room->name}" : " (No Room)";
         Log::info("Section assigned", [
             'instructor' => $instructor->user->name ?? "ID: {$instructor->id}",
             'course' => $course->name,
             'section' => $sectionNumber,
             'days' => $daysString,
-            'time' => "{$startTime} - {$endTime}",
+            'time' => "{$startTime} - {$endTime}" . $roomInfo,
         ]);
+    }
+
+    protected function findAvailableRoom(Course $course, array $days, string $startTime, string $endTime, Semester $semester): ?\App\Models\Room
+    {
+        $requiredType = $course->type === 'Lab' ? 'Lab' : 'Lecture'; // Assuming course has type, default to Lecture if not
+
+        // Get all rooms of required type, ordered by capacity (best fit)
+        $rooms = \App\Models\Room::where('type', $requiredType)
+            ->orderBy('capacity', 'asc')
+            ->get();
+
+        foreach ($rooms as $room) {
+            // Check if room is free
+            $isOccupied = Section::where('room_id', $room->id)
+                ->where('semester_id', $semester->id)
+                ->where(function ($query) use ($days) {
+                    foreach ($days as $day) {
+                        $query->orWhereJsonContains('days', $day);
+                    }
+                })
+                ->where(function ($query) use ($startTime, $endTime) {
+                    $query->where('start_time', '<', $endTime)
+                        ->where('end_time', '>', $startTime);
+                })
+                ->exists();
+
+            if (!$isOccupied) {
+                return $room;
+            }
+        }
+
+        return null;
     }
 
     /**

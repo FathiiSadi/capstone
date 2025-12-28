@@ -7,16 +7,38 @@ use App\Models\Section;
 use App\Models\Semester;
 use App\Models\Instructor;
 use App\Models\Department;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Collection;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class Timetable extends Page implements HasForms
 {
     use InteractsWithForms;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('exportPdf')
+                ->label('Export to PDF')
+                ->icon('heroicon-m-arrow-down-tray')
+                ->action(function () {
+                    $sections = $this->sections;
+                    $pdf = Pdf::loadView('filament.resources.schedule-resource.pages.timetable-pdf', [
+                        'sections' => $sections,
+                        'semester' => Semester::find($this->semester_id)
+                    ]);
+                    return response()->streamDownload(
+                        fn() => print ($pdf->output()),
+                        "schedule-semester-{$this->semester_id}.pdf"
+                    );
+                }),
+        ];
+    }
 
     protected static string $resource = ScheduleResource::class;
 
@@ -65,7 +87,7 @@ class Timetable extends Page implements HasForms
 
         $query = Section::query()
             ->where('semester_id', $this->semester_id)
-            ->with(['course.department', 'instructor.user']);
+            ->with(['course.department', 'instructor.user', 'room']);
 
         if ($this->instructor_id) {
             $query->where('instructor_id', $this->instructor_id);
@@ -94,6 +116,52 @@ class Timetable extends Page implements HasForms
         }
 
         return $data;
+    }
+
+    public function getConflictsProperty(): Collection
+    {
+        $sections = $this->sections;
+        $conflicts = collect();
+
+        foreach ($sections as $sectionA) {
+            foreach ($sections as $sectionB) {
+                if ($sectionA->id === $sectionB->id) {
+                    continue;
+                }
+
+                // Check for Room Conflict
+                if ($sectionA->room_id && $sectionB->room_id && $sectionA->room_id === $sectionB->room_id) {
+                    if ($this->hasTimeOverlap($sectionA, $sectionB)) {
+                        $conflicts->push([
+                            'type' => 'Room Conflict',
+                            'section_a' => $sectionA,
+                            'section_b' => $sectionB,
+                            'message' => "Room {$sectionA->room->name} double booked."
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return $conflicts->unique(function ($item) {
+            return $item['section_a']->id < $item['section_b']->id ?
+                $item['section_a']->id . '-' . $item['section_b']->id :
+                $item['section_b']->id . '-' . $item['section_a']->id;
+        });
+    }
+
+    protected function hasTimeOverlap($sectionA, $sectionB): bool
+    {
+        $daysA = is_array($sectionA->days) ? $sectionA->days : [$sectionA->days];
+        $daysB = is_array($sectionB->days) ? $sectionB->days : [$sectionB->days];
+
+        $commonDays = array_intersect($daysA, $daysB);
+
+        if (empty($commonDays)) {
+            return false;
+        }
+
+        return $sectionA->start_time < $sectionB->end_time && $sectionA->end_time > $sectionB->start_time;
     }
 
     public function getCourseColor(int $courseId): array

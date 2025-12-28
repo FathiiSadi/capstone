@@ -18,6 +18,7 @@ class Section extends Model
         'days',
         'start_time',
         'end_time',
+        'room_id',
         'status',
     ];
 
@@ -38,5 +39,10 @@ class Section extends Model
     public function semester(): BelongsTo
     {
         return $this->belongsTo(Semester::class);
+    }
+
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class);
     }
 }

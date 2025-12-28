@@ -36,6 +36,11 @@ class SectionsTable
                 TextColumn::make('end_time')
                     ->time()
                     ->sortable(),
+                TextColumn::make('room.name')
+                    ->label('Room')
+                    ->placeholder('TBA')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('status')
                     ->badge(),
                 TextColumn::make('created_at')

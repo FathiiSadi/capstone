@@ -3,61 +3,32 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Course;
-use App\Models\Department;
 use App\Models\Instructor;
-use App\Models\User;
 use App\Models\Section;
-use App\Models\Semester;
-use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-class StatsOverview extends BaseWidget
+class StatsOverview extends StatsOverviewWidget
 {
-    protected static ?int $sort = 1;
-
     protected function getStats(): array
     {
-        $underloadedCount = Instructor::with(['sections.course'])
-            ->get()
-            ->filter(fn($i) => $i->sections->sum(fn($s) => $s->course->credits ?? 0) < $i->min_credits)
-            ->count();
-
-        $totalCredits = Section::join('courses', 'sections.course_id', '=', 'courses.id')
-            ->sum('courses.credits');
-
         return [
-            Stat::make('Academic Staff', Instructor::count())
-                ->description('Active educators')
-                ->descriptionIcon('heroicon-o-academic-cap')
-                ->chart([5, 8, 12, 10, 15, 18, 17])
-                ->color('info'),
-
-            Stat::make('Scheduled Sections', Section::count())
-                ->description('Active in current semester')
-                ->descriptionIcon('heroicon-o-squares-2x2')
-                ->chart([2, 5, 8, 12, 18, 15, 20])
+            Stat::make('Total Sections', Section::count())
+                ->description('Total sections managed')
+                ->descriptionIcon('heroicon-m-rectangle-stack')
+                ->chart([7, 2, 10, 3, 15, 4, 17])
                 ->color('success'),
 
-            Stat::make('Underloaded', $underloadedCount)
-                ->description('Staff needing assignment')
-                ->descriptionIcon('heroicon-o-exclamation-circle')
-                ->chart([8, 10, 7, 5, 4, 3, 2])
-                ->color($underloadedCount > 0 ? 'warning' : 'success'),
+            Stat::make('Unassigned Sections', Section::whereNull('instructor_id')->count())
+                ->description('Sections needing instructors')
+                ->descriptionIcon('heroicon-m-user-minus')
+                ->chart([3, 5, 2, 8, 4, 9, 1])
+                ->color('danger'),
 
-            Stat::make('Total Courses', Course::count())
-                ->description('Cataloged courses')
-                ->descriptionIcon('heroicon-o-book-open')
+            Stat::make('Active Instructors', Instructor::count())
+                ->description('Total instructors registered')
+                ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
-
-            Stat::make('Assigned Credits', $totalCredits)
-                ->description('Total credit hour load')
-                ->descriptionIcon('heroicon-o-chart-bar')
-                ->color('success'),
-
-            Stat::make('Departments', Department::count())
-                ->description('Academic units')
-                ->descriptionIcon('heroicon-o-building-office-2')
-                ->color('info'),
         ];
     }
 }
