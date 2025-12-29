@@ -3,8 +3,10 @@
         <button class="btn btn-link text-white p-0 me-2" id="sidebarToggle">
             <i class="bi bi-list fs-4"></i>
         </button>
-        <img src="{{ asset('assets/logo.png') }}" alt="HTU Logo">
-        <span class="fw-bold fs-5 text-white ms-2">HTU Portal</span>
+
+            <img src="{{ asset('assets/logo.png') }}" alt="Qalam Logo">
+        
+
     </div>
     <div class="d-flex align-items-center gap-3">
         @auth

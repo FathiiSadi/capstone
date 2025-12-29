@@ -16,6 +16,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
@@ -37,10 +39,33 @@
     </main>
 
     <script>
-        document.getElementById('sidebarToggle').addEventListener('click', function () {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-            document.querySelector('.main').classList.toggle('sidebar-collapsed');
-        });
+    document.getElementById('sidebarToggle').addEventListener('click', function () {
+        const sidebar = document.getElementById('sidebar');
+        const main = document.querySelector('.main');
+
+        // Check window width to decide behavior
+        if (window.innerWidth < 992) {
+            // Mobile Behavior: Toggle the 'mobile-open' class to slide in/out
+            sidebar.classList.toggle('mobile-open');
+        } else {
+            // Desktop Behavior: Toggle the 'collapsed' class to shrink sidebar
+            sidebar.classList.toggle('collapsed');
+            main.classList.toggle('sidebar-collapsed');
+        }
+    });
+
+    // Optional: Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarToggle');
+        
+        if (window.innerWidth < 992 && 
+            sidebar.classList.contains('mobile-open') && 
+            !sidebar.contains(event.target) && 
+            !toggleBtn.contains(event.target)) {
+            sidebar.classList.remove('mobile-open');
+        }
+    });
     </script>
 </body>
 

@@ -1,46 +1,70 @@
+/* ============================================
+   1. BRAND VARIABLES (Navy & Electric Teal Theme)
+   ============================================ */
 :root {
-    --primary-red: #ee4249;
-    --sidebar-dark: #2b2b2b;
-    --bg-light: #f2f4f7;
-    --accent-blue: #2b6cb0;
-    --card-radius: 12px;
+    /* Theme Colors */
+    --brand-primary: #0f172a;  /* Deep Navy (Sidebar/Headings) */
+    --brand-accent:  #0ea5e9;  /* Electric Teal (Buttons/Highlights/Pixels) */
+    --brand-dark:    #020617;  /* Darker Navy (Sidebar Background) */
+    --brand-light:   #f1f5f9;  /* Light Gray (Page Background) */
+    --text-main:     #1e293b;  /* Dark Slate (Main Text) */
+    --card-radius:   12px;
 }
+
 
 * {
     box-sizing: border-box;
 }
 
 body {
-    background: var(--bg-light);
-    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--brand-light);
+    color: var(--text-main);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
     margin: 0;
-    color: #222;
 }
 
-/* Topbar */
+/* ============================================
+   2. TOPBAR & SIDEBAR
+   ============================================ */
+/* Topbar (Deep Navy) */
 .topbar {
+    background: var(--brand-primary);
     height: 60px;
-    background: var(--primary-red);
     color: #fff;
     display: flex;
     align-items: center;
     padding: 0 16px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.topbar .dropdown-toggle img {
+    border-radius: 50%;
+    border: 2px solid #fff; 
+    width: 40px;
+    height: 40px;
+    object-fit: cover; 
+}
+
+.topbar .d-flex.align-items-center.gap-3 span {
+    color: #fff !important;
 }
 
 .topbar img {
-    height: 40px;
-    filter: brightness(100%) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    height: 56px;
+    filter: brightness(100%) drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+    /* margin-left: 10px; */
 }
 
-/* Sidebar */
+/* Sidebar (Darker Navy) */
 .sidebar {
+    background: var(--brand-dark);
     width: 260px;
-    background: var(--sidebar-dark);
     min-height: calc(100vh - 60px);
     color: #fff;
     padding-top: 18px;
+    border-right: 1px solid rgba(255,255,255,0.05);
     transition: all 0.3s;
 }
 
@@ -57,55 +81,39 @@ body {
     padding: 8px 20px;
 }
 
+/* Brand Text Font (Minimalist) */
+.brand-text, 
+.sidebar .brand span, 
+.topbar .fw-bold {
+    font-family: 'Outfit', sans-serif !important;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
 .sidebar .brand img {
     height: 50px;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .sidebar .nav-link {
-    color: #cfcfcf;
+    color: #94a3b8; /* Slate gray text */
     padding: 12px 20px;
     display: block;
-    border-left: 4px solid transparent;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
 }
 
-.sidebar .nav-link:hover {
-    background: rgba(255, 255, 255, 0.05);
+.sidebar .nav-link:hover, 
+.sidebar .nav-link.active {
+    background: rgba(14, 165, 233, 0.1); /* Subtle Teal tint */
     color: #fff;
-    border-left-color: var(--primary-red);
+    border-left-color: var(--brand-accent); /* Electric Teal border */
     text-decoration: none;
 }
 
-/*login*/
-.login-page {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-light)
-}
-
-.login-card {
-    width: 420px;
-    border-radius: 10px;
-    padding: 28px;
-}
-
-.logo-circle {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: #fff;
-    color: var(--primary-red);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700
-}
-
-
-
-/* Main content */
+/* ============================================
+   3. MAIN CONTENT & COMPONENTS
+   ============================================ */
 .main {
     padding: 22px;
     transition: all 0.3s;
@@ -117,123 +125,211 @@ body {
 
 .page-title {
     font-size: 28px;
+    font-weight: 700;
     margin-bottom: 8px;
+    color: var(--brand-primary);
 }
 
-/* Cards */
+/* Custom Cards */
 .card-custom {
     border-radius: var(--card-radius);
-    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     background: #fff;
     padding: 18px;
     margin-bottom: 18px;
+    border-top: 3px solid var(--brand-accent);
 }
 
-/* Buttons */
+/* Buttons (Electric Teal) */
 .btn-primary-custom {
-    background: var(--primary-red);
-    border-color: var(--primary-red);
+    background: var(--brand-accent);
+    border: 1px solid var(--brand-accent);
     color: #fff;
+    font-weight: 600;
+    padding: 0.5rem 1.2rem;
 }
 
 .btn-primary-custom:hover {
-    background: #bf3e34;
-    border-color: #bf3e34;
+    background: #0284c7; /* Darker Teal */
+    border-color: #0284c7;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
 
-/* Form */
-.form-control:focus {
-    border-color: var(--primary-red);
-    box-shadow: 0 0 0 0.12rem rgba(214, 75, 59, 0.12);
+/* Form Controls */
+.form-control:focus, .form-select:focus {
+    border-color: var(--brand-accent);
+    box-shadow: 0 0 0 0.12rem rgba(14, 165, 233, 0.2);
 }
 
-/* KPI numbers */
-.kpi {
-    font-size: 20px;
-    font-weight: 700;
+/* Links */
+a { color: var(--brand-accent); text-decoration: none; }
+a:hover { color: #0284c7; text-decoration: underline; }
+
+/* ============================================
+   4. DASHBOARD WIDGETS (Gradients)
+   ============================================ */
+/* Card container */
+.card-statistic-3 {
+    position: relative;
+    padding: 2rem;
+    overflow: hidden; /* Ensures icon doesn't spill out */
+    border-radius: var(--card-radius);
 }
 
-/* Responsive */
-@media (max-width: 991px) {
-    .sidebar {
-        display: none;
-    }
+/* ============================================
+   KPI CARDS & GRADIENTS
+   ============================================ */
+
+/* 1. Large Icons - Increased Opacity for Clarity */
+.card-icon-large {
+    font-size: 80px;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    opacity: 0.4; /* Made clearer (was 0.15) */
+    color: #fff;
+    pointer-events: none;
 }
 
-
-/*schedule page*/
-
-.nav-pills .nav-link {
-    border-radius: 50px;
-    color: #2b2b2b;
+/* 2. Royal Indigo (Replaces Cherry) - Premium & Academic */
+.l-bg-cherry {
+    background: linear-gradient(135deg, #2e1065, #7e22ce) !important;
+    /* Gradient: Very Dark Violet -> Deep Purple */
+    color: #fff;
 }
-
-.nav-pills .nav-link.active {
-    background-color: var(--primary-red);
+/* 3. Brand Ocean (Replaces Blue) - Matches your Logo Theme */
+.l-bg-blue-dark {
+    background: linear-gradient(135deg, #0f172a, #0ea5e9) !important;
     color: #fff;
 }
 
-/* Card Icon */
-.card-icon {
-    text-align: center;
-    line-height: 50px;
-    margin-left: 15px;
-    color: #000;
-    opacity: 0.1;
+.l-bg-green-dark {
+    background: linear-gradient(135deg, #064e3b, #059669) !important;
+    color: #fff;
 }
 
-.card-icon-large {
-    font-size: 80px; /* adjust size as needed */
-    position: absolute;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    opacity: 0.15; /* softer look */
-}
-
-
-/* Card container */
-.card-statistic-3 {
-    position: relative; /* important for absolute child positioning */
-    padding: 2rem;
-}
-
-/* Card Icon */
-.card-icon-large {
-    position: absolute;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    font-size: 80px;
-    opacity: 0.15;
-    color: #fff; /* ensure visibility on dark backgrounds */
-}
-
-/* Card Title */
 .card-statistic-3 .card-title {
     font-weight: 600;
     font-size: 16px;
-    color: #fff;
+    color: rgba(255,255,255,0.9);
     margin-bottom: 0.5rem;
 }
 
-/* KPI number */
-.card-statistic-3 .kpi {
+.card-statistic-3 .kpi, 
+.card-statistic-3 h2 {
     font-size: 28px;
     font-weight: 700;
     color: #fff;
+    margin-bottom: 0;
 }
 
-/* Gradient backgrounds */
-.l-bg-cherry { background: linear-gradient(to right, #493240, #f09); color: #fff; }
-.l-bg-blue-dark { background: linear-gradient(to right, #373b44, #4286f4); color: #fff; }
-.l-bg-green-dark { background: linear-gradient(to right, #0a504a, #38ef7d); color: #fff; }
+/* ============================================
+   5. AUTH PAGES (Login/Register)
+   ============================================ */
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--brand-light);
+}
 
-/* Responsive adjustments */
-@media (max-width: 991px) {
-    .card-icon-large {
-        font-size: 60px;
-        right: 10px;
+.login-card {
+    width: 420px;
+    border-radius: 10px;
+    padding: 28px;
+    background: #fff;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.logo-circle {
+    background: var(--brand-primary);
+    color: #fff;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* ============================================
+   6. RESPONSIVE STYLES (Mobile < 768px)
+   ============================================ */
+@media (max-width: 768px) {
+    /* Topbar Alignment */
+    .topbar {
+        padding: 0 12px;
+        justify-content: space-between;
+    }
+
+    #sidebarToggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        padding: 4px;
+        margin-right: 0 !important;
+    }
+
+    /* Smaller Logo on Mobile */
+    .topbar img {
+        height: 32px !important;
+        width: auto;
+    }
+
+    /* Hide User Name */
+    .topbar .d-flex.align-items-center.gap-3 span.d-none.d-md-inline {
+        display: none !important;
+    }
+
+    /* Sidebar (Off-Canvas) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px;
+        left: -260px;
+        width: 260px !important;
+        height: calc(100vh - 60px);
+        z-index: 1050;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+    }
+    
+    .sidebar.mobile-open {
+        left: 0 !important;
+    }
+
+    /* Main Content Reset */
+    .main {
+        margin-left: 0 !important;
+        width: 100%;
+        padding: 1rem !important;
+    }
+
+    /* Login Mobile */
+    .login-card {
+        width: 100% !important;
+        max-width: 400px;
+        margin: 1rem;
+    }
+
+    /* Tables */
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #eee;
+    }
+    
+    .table th, .table td {
+        white-space: nowrap;
+        padding: 0.75rem 0.5rem !important;
     }
 }
 
+/* Schedule Nav Pills */
+.nav-pills .nav-link.active {
+    background-color: var(--brand-accent);
+    color: #fff;
+}
