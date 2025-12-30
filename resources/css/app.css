@@ -10,6 +10,8 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+
+/* this is the app.css */
 :root {
     --primary-red: #28104E;
     --sidebar-dark: #2b2b2b;
@@ -50,11 +52,11 @@ body {
     color: #fff;
     padding-top: 18px;
 }
-.sidebar .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 20px;
+.sidebar .brand span, 
+.topbar .fw-bold {
+    font-family: 'Outfit', sans-serif; 
+    letter-spacing: 0.5px; /* Adds a little breath between letters */
+    font-weight: 700 !important; /* Make it bold */
 }
 .sidebar .brand img {
     height: 50px;
