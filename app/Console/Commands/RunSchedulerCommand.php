@@ -132,7 +132,7 @@ class RunSchedulerCommand extends Command
                 ['Instructor', 'Assigned', 'Required', 'Short By'],
                 $result->underloadedInstructors->map(function ($status) {
                     return [
-                        $status->instructor->user->name ?? "ID: {$status->instructor->id}",
+                        $status->instructor->user?->name ?? "ID: {$status->instructor->id}",
                         $status->totalAssignedCredits,
                         $status->minimumRequiredCredits,
                         $status->minimumRequiredCredits - $status->totalAssignedCredits,
