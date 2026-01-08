@@ -1,6 +1,6 @@
 <aside class="sidebar d-none d-lg-block" id="sidebar">
     <div class="brand">
-        <span class="fw-bold text-white">HTU Portal</span>
+        <span class="fw-bold text-white">Qalam Portal</span>
     </div>
     <nav class="mt-3">
         @guest

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'HTU Portal')</title>
+    <title>@yield('title', 'Qalam Portal')</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,7 +19,7 @@
     <header class="topbar">
         <div class="d-flex align-items-center gap-2">
             <img src="{{ asset('assets/logo.png') }}" alt="HTU Logo">
-            <span class="fw-bold fs-5 text-white ms-2">HTU Portal</span>
+            <span class="fw-bold fs-5 text-white ms-2">Qalam Portal</span>
         </div>
         <div class="d-flex align-items-center gap-3">
             <span>Mohammad Naim Hussien Shamieh</span>
@@ -32,7 +32,7 @@
 
         <aside class="sidebar d-none d-lg-block">
             <div class="brand">
-                <span class="fw-bold text-white">HTU Portal</span>
+                <span class="fw-bold text-white">Qalam Portal</span>
             </div>
             <nav class="mt-3">
                 <a href="{{ route('instructor.home') }}" class="nav-link">Home</a>

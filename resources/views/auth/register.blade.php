@@ -6,7 +6,7 @@
                     <img src="{{ asset('assets/logo.png') }}" alt="HTU Logo">
                 </div>
                 <div>
-                    <h4 class="mb-0">HTU Portal</h4>
+                    <h4 class="mb-0">Qalam Portal</h4>
                     <small class="text-muted">Sign in to continue</small>
                 </div>
             </div>
