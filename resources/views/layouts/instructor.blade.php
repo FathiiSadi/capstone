@@ -35,7 +35,7 @@
                 <span class="fw-bold text-white">Qalam Portal</span>
             </div>
             <nav class="mt-3">
-                <a href="{{ route('instructor.home') }}" class="nav-link">Home</a>
+                <a href="{{ route('home') }}" class="nav-link">Home</a>
                 <a href="{{ route('instructor.preferences') }}" class="nav-link">Instructor Preferences</a>
                 <a href="{{ route('instructor.profile') }}" class="nav-link">Profile</a>
                 <a href="{{ route('logout') }}" class="nav-link">Logout</a>

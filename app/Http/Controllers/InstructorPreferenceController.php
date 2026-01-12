@@ -21,7 +21,7 @@ class InstructorPreferenceController extends Controller
         $instructor = $user->instructor;
 
         if (!$instructor) {
-            return redirect()->route('instructor.home')->with('error', 'Instructor profile not found.');
+            return redirect()->route('home')->with('error', 'Instructor profile not found.');
         }
 
         // Get all preferences grouped by semester with submission time
