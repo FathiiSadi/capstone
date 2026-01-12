@@ -322,7 +322,6 @@
                             </div>
                         </div>
                     </div>
-
                 @else
                     <div class="glass-card text-center py-5">
                         <i class="bi bi-shield-lock text-secondary display-1 mb-4"></i>

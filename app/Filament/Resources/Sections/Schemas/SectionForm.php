@@ -16,17 +16,24 @@ class SectionForm
                 Select::make('course_id')
                     ->relationship('course', 'name')
                     ->required()
-                    ->live(),
+                    ->live()
+                    ->disabled(),
                 TextInput::make('section_number')
                     ->label('Section Number')
                     ->placeholder('e.g. S1, S2')
-                    ->maxLength(20),
+                    ->maxLength(20)
+                    ->disabled(),
                 Select::make('semester_id')
                     ->relationship('semester', 'name')
-                    ->required(),
+                    ->required()
+                    ->disabled(),
                 Select::make('instructor_id')
-                    ->relationship('instructor.user', 'name')
                     ->label('Instructor')
+                    ->options(function () {
+                        return \App\Models\Instructor::join('users', 'instructors.user_id', '=', 'users.id')
+                            ->pluck('users.name', 'instructors.id');
+                    })
+                    ->searchable()
                     ->placeholder('Select Instructor (Optional)'),
                 Select::make('days')
                     ->options([
@@ -38,17 +45,21 @@ class SectionForm
                         'Saturday' => 'Saturday',
                     ])
                     ->multiple()
-                    ->required(),
+                    ->required()
+                    ->disabled(),
                 TimePicker::make('start_time')
-                    ->required(),
+                    ->required()
+                    ->disabled(),
                 TimePicker::make('end_time')
-                    ->required(),
+                    ->required()
+                    ->disabled(),
                 Select::make('room_id')
                     ->relationship('room', 'name')
                     ->label('Room')
                     ->placeholder('Select Room (Optional)')
                     ->preload()
-                    ->searchable(),
+                    ->searchable()
+                    ->disabled(),
                 Select::make('status')
                     ->options([
                         'Active' => 'Active',
