@@ -211,9 +211,10 @@ class SchedulerService
     public function overrideAssignment(Section $section, Instructor $newInstructor): bool
     {
         // Validate the override doesn't create conflicts
+        $duration = ($section->course->hours ?? 3.0) / 2.0;
         $endTime = $this->conflictChecker->calculateEndTime(
             $section->start_time,
-            (float) ($section->course->hours ?? 3.0)
+            (float) $duration
         );
 
         $existingSections = $newInstructor->sections()
@@ -231,6 +232,15 @@ class SchedulerService
                 ]);
                 return false;
             }
+        }
+
+        // Check C.H. Capacity / Load Limit
+        if (!$this->creditCalculator->isUnderloaded($newInstructor, $section->semester)) {
+            Log::warning("Override rejected: Load limit reached", [
+                'section_id' => $section->id,
+                'new_instructor_id' => $newInstructor->id,
+            ]);
+            return false;
         }
 
         // Perform the override
@@ -450,17 +460,8 @@ class SchedulerService
     protected function tryAssignAvailableSlot(Instructor $instructor, $course, Semester $semester): bool
     {
         // UNIVERSITY RULE: Standard time slots are based on day pairs
-        $standardSlots = [
-            ['day' => 'Sunday', 'start' => '08:30:00'],
-            ['day' => 'Sunday', 'start' => '10:00:00'],
-            ['day' => 'Sunday', 'start' => '13:00:00'],
-            ['day' => 'Monday', 'start' => '08:30:00'],
-            ['day' => 'Monday', 'start' => '10:00:00'],
-            ['day' => 'Monday', 'start' => '13:00:00'],
-            ['day' => 'Tuesday', 'start' => '08:30:00'],
-            ['day' => 'Tuesday', 'start' => '10:00:00'],
-            ['day' => 'Tuesday', 'start' => '13:00:00'],
-        ];
+        $patterns = ['Sunday', 'Monday', 'Tuesday'];
+        $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
 
         $existingSections = $instructor->sections()
             ->where('semester_id', $semester->id)
@@ -485,17 +486,48 @@ class SchedulerService
             return false;
         }
 
-        foreach ($standardSlots as $slot) {
-            $daysToAssign = $this->conflictChecker->getDayPair($slot['day']);
-            $endTime = $this->conflictChecker->calculateEndTime($slot['start'], (float) ($course->hours ?? 3.0));
+        $potentialSlots = [];
+        foreach ($patterns as $pattern) {
+            foreach ($times as $startTime) {
+                // Count current global occupancy for this slot to spread the load
+                $occupancy = Section::where('semester_id', $semester->id)
+                    ->where('start_time', $startTime)
+                    ->where(function ($query) use ($pattern) {
+                        $days = $this->conflictChecker->getDayPair($pattern);
+                        foreach ($days as $day) {
+                            $query->orWhereJsonContains('days', $day);
+                        }
+                    })
+                    ->count();
+
+                $potentialSlots[] = [
+                    'pattern' => $pattern,
+                    'start_time' => $startTime,
+                    'occupancy' => $occupancy
+                ];
+            }
+        }
+
+        // Sort by occupancy ascending (least busy slots first)
+        usort($potentialSlots, function ($a, $b) {
+            if ($a['occupancy'] === $b['occupancy']) {
+                return rand(-1, 1);
+            }
+            return $a['occupancy'] <=> $b['occupancy'];
+        });
+
+        foreach ($potentialSlots as $slot) {
+            $daysToAssign = $this->conflictChecker->getDayPair($slot['pattern']);
+            $duration = ($course->hours ?? 3.0) / 2.0;
+            $endTime = $this->conflictChecker->calculateEndTime($slot['start_time'], (float) $duration);
 
             // Check if within teaching day
-            if (!$this->conflictChecker->isWithinTeachingDay($slot['start'], $endTime)) {
+            if (!$this->conflictChecker->isWithinTeachingDay($slot['start_time'], $endTime)) {
                 continue;
             }
 
             // Check for conflicts on BOTH days of the pair
-            if ($this->conflictChecker->hasConflict($daysToAssign, $slot['start'], $endTime, $existingSections)) {
+            if ($this->conflictChecker->hasConflict($daysToAssign, $slot['start_time'], $endTime, $existingSections)) {
                 continue;
             }
 
@@ -512,7 +544,7 @@ class SchedulerService
                 'semester_id' => $semester->id,
                 'instructor_id' => $instructor->id,
                 'days' => $daysToAssign,
-                'start_time' => $slot['start'],
+                'start_time' => $slot['start_time'],
                 'end_time' => $endTime,
                 'status' => 'Active',
             ]);
@@ -523,7 +555,7 @@ class SchedulerService
                 'course' => $course->name,
                 'section' => $sectionNumber,
                 'days' => $daysString,
-                'time' => "{$slot['start']} - {$endTime}",
+                'time' => "{$slot['start_time']} - {$endTime}",
             ]);
 
             return true;

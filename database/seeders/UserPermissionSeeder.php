@@ -11,10 +11,10 @@ class UserPermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        Role::create(['name' => 'super-admin']);
-        Role::create(['name' => 'instructor']);
+        Role::firstOrCreate(['name' => 'super-admin']);
+        Role::firstOrCreate(['name' => 'instructor']);
 
-        Permission::create(['name' => 'courses.*']);
-        Permission::create(['name' => 'users.*']);
+        Permission::firstOrCreate(['name' => 'courses.*']);
+        Permission::firstOrCreate(['name' => 'users.*']);
     }
 }

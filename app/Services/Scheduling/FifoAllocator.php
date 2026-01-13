@@ -140,15 +140,8 @@ class FifoAllocator
             }
         }
 
-        // REQUIREMENT: If still underloaded and haven't reached 2 sections, try other available slots for this course
-        if (
-            $this->creditCalculator->isUnderloaded($instructor, $semester) &&
-            $this->getCourseAssignmentCount($instructor, $course, $semester) < 2
-        ) {
-            if ($this->tryAssignDefaultSlots($instructor, $course, $semester)) {
-                $assignedCountThisPass++;
-            }
-        }
+        // Enforcing Strictness: If preferences were provided but failed (e.g. conflict), we do NOT fall back to random slots.
+        // We only retry defaults if NO preferences were provided at all (handled above).
 
         if ($assignedCountThisPass === 0) {
             $this->preferencesSkipped++;
@@ -171,13 +164,15 @@ class FifoAllocator
             $daysValue = $decoded ?: [$daysValue];
         }
 
-        $dayPatterns = is_array($daysValue) ? $daysValue : ['Sun/Wed'];
+        // If days are NULL/Empty, user allows ANY day -> Try all patterns
+        $dayPatterns = (is_array($daysValue) && !empty($daysValue))
+            ? $daysValue
+            : ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
 
         // Map preferred time ranges to specific slots
         // Morning: 08:30–11:30
         // Noon: 11:30–14:30
         // Afternoon: 14:30–17:30
-        // Each lecture is 1.5 hours. So each range has 2 possible 1.5h slots.
 
         $baseStartTime = $timeSlot->start_time;
         $slotsToTry = [];
@@ -188,12 +183,21 @@ class FifoAllocator
             $slotsToTry = ['11:30:00', '13:00:00'];
         } elseif ($baseStartTime === '14:30:00' || $baseStartTime === '14:00:00') {
             $slotsToTry = ['14:30:00', '16:00:00'];
+        } elseif (!empty($baseStartTime)) {
+            $slotsToTry = [$baseStartTime];
         } else {
-            $slotsToTry = [$baseStartTime ?: '08:30:00'];
+            // If time is NULL, user allows ANY time -> Try all standard slots
+            $slotsToTry = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
         }
 
         foreach ($dayPatterns as $pattern) {
             $daysToAssign = $this->conflictChecker->getDayPair($pattern);
+
+            // Randomize slots order to avoid clustering? Or keep strict order?
+            // "Strict" usually implies trying what is asked. If "Any", random is good.
+            if ($baseStartTime === null) {
+                shuffle($slotsToTry);
+            }
 
             foreach ($slotsToTry as $startTime) {
                 if ($this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $startTime, $timeSlot->id)) {
@@ -211,13 +215,17 @@ class FifoAllocator
     protected function attemptAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): bool
     {
         // Check section quota for this course/semester
-        if (!$this->hasAvailableSectionQuota($course, $semester)) {
-            $this->logSkip($timeSlotId, 'Section quota exceeded for course');
-            return false;
-        }
+        // User Request: Make sections if there are no section available (Auto-Scaling)
+        // We relax the quota check to allow creating new sections if needed.
+        // if (!$this->hasAvailableSectionQuota($course, $semester)) {
+        //    $this->logSkip($timeSlotId, 'Section quota exceeded for course');
+        //    return false;
+        // }
 
         // Calculate end time
-        $endTime = $this->conflictChecker->calculateEndTime($startTime, (float) ($course->hours ?? 1.5));
+        // User Requirement: Course duration = Hours / 2. (e.g. 3 hours = 1.5 hours per session)
+        $duration = ($course->hours ?? 3.0) / 2.0;
+        $endTime = $this->conflictChecker->calculateEndTime($startTime, (float) $duration);
 
         // Check if within teaching day
         if (!$this->conflictChecker->isWithinTeachingDay($startTime, $endTime)) {
@@ -244,25 +252,12 @@ class FifoAllocator
 
     /**
      * Try to assign default slots if no preference provided.
+     * Sprays assignments across available time/day patterns to avoid overcrowding.
      */
     protected function tryAssignDefaultSlots(Instructor $instructor, Course $course, Semester $semester): bool
     {
-        $patterns = ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
-        $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
-
-        foreach ($patterns as $pattern) {
-            foreach ($times as $startTime) {
-                // Also check if they reached min credits inside the loop
-                if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-                    return false;
-                }
-
-                if ($this->attemptAssignment($instructor, $course, $semester, $this->conflictChecker->getDayPair($pattern), $startTime, 0)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        $assigner = new SlotAssignmentService($this->creditCalculator, $this->conflictChecker);
+        return $assigner->assignToOptimalSlot($instructor, $course, $semester, true);
     }
 
     /**
@@ -330,7 +325,8 @@ class FifoAllocator
         $existingCount = Section::where('course_id', $course->id)
             ->where('semester_id', $semester->id)
             ->count();
-        $sectionNumber = "S" . ($existingCount + 1);
+        // Naming: CourseCode-Number (e.g. AI-2)
+        $sectionNumber = $course->code . '-' . ($existingCount + 1);
 
         // Find a suitable room
         $room = $this->findAvailableRoom($course, $days, $startTime, $endTime, $semester);

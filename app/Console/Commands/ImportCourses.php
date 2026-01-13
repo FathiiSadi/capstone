@@ -208,6 +208,60 @@ class ImportCourses extends Command
         // 7. Section
         // Find existing to avoid dupes?
         // Key: course_id, semester_id, section_number
+        // 7. Section
+
+        // Define default values
+        $finalDays = !empty($days) ? $days : [];
+        $finalStartTime = $startTime ? date('H:i:s', strtotime($startTime)) : null;
+        $finalEndTime = $endTime ? date('H:i:s', strtotime($endTime)) : null;
+        $finalRoomId = isset($room) ? $room->id : null;
+
+        // Logic for Office Hours or Missing Time
+        if ($course->office_hours) {
+            // Force null for office hours courses
+            $finalDays = null;
+            $finalStartTime = null;
+            $finalEndTime = null;
+            $finalRoomId = null; // Usually no room or virtual
+        } elseif (empty($finalStartTime) && $instructor) {
+            // Standard course but NO time provided in CSV
+            // Attempt smart assignment using our service
+            // We need to resolve dependency. ideally inject, but in command we can instantiate.
+            $assigner = new \App\Services\Scheduling\SlotAssignmentService(
+                new \App\Services\Scheduling\CreditHourCalculator(),
+                new \App\Services\Scheduling\TimeConflictChecker()
+            );
+
+            // We only simulate assignment here to get values? 
+            // Or we actually let the service create it?
+            // The service creates it. But we have logic below to updateOrCreate.
+            // Let's check if section exists first.
+
+            $existingSection = Section::where('course_id', $course->id)
+                ->where('semester_id', $semester->id)
+                ->where('section_number', $sectionNumber)
+                ->first();
+
+            $ignoreSectionId = $existingSection ? $existingSection->id : null;
+
+            // Always attempt smart assignment if no manual time provided, overwriting previous bad assignments
+            if (empty($finalStartTime) && $instructor) {
+                // Instantiating services directly since we are in a command
+                $calculator = new \App\Services\Scheduling\CreditHourCalculator();
+                $checker = new \App\Services\Scheduling\TimeConflictChecker();
+
+                $assigner = new \App\Services\Scheduling\SlotAssignmentService($calculator, $checker);
+
+                // Use the refined logic that includes DAY PATTERN balancing and randomization
+                $slot = $assigner->findOptimalSlot($instructor, $course, $semester, $ignoreSectionId);
+                if ($slot) {
+                    $finalDays = $slot['days'];
+                    $finalStartTime = $slot['start_time'];
+                    $finalEndTime = $slot['end_time'];
+                }
+            }
+        }
+
         Section::updateOrCreate(
             [
                 'course_id' => $course->id,
@@ -216,10 +270,10 @@ class ImportCourses extends Command
             ],
             [
                 'instructor_id' => $instructor ? $instructor->id : null,
-                'room_id' => isset($room) ? $room->id : null,
-                'days' => !empty($days) ? $days : [], // Casts to array/json
-                'start_time' => $startTime ? date('H:i:s', strtotime($startTime)) : '00:00:00',
-                'end_time' => $endTime ? date('H:i:s', strtotime($endTime)) : '00:00:00',
+                'room_id' => $finalRoomId,
+                'days' => $finalDays,
+                'start_time' => $finalStartTime,
+                'end_time' => $finalEndTime,
                 'status' => 'Active',
             ]
         );

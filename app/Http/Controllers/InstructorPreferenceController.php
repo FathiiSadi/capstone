@@ -19,7 +19,6 @@ class InstructorPreferenceController extends Controller
     {
         $user = auth()->user();
         $instructor = $user->instructor;
-
         if (!$instructor) {
             return redirect()->route('home')->with('error', 'Instructor profile not found.');
         }
@@ -71,7 +70,6 @@ class InstructorPreferenceController extends Controller
 
         $user = auth()->user();
         $instructor = $user->instructor;
-
         if (!$instructor) {
             return back()->withInput()->with('error', 'Instructor profile not found.');
         }
@@ -103,7 +101,7 @@ class InstructorPreferenceController extends Controller
                     $preferredDays = $validated['preferred_days'] ?? [];
                     $preferredTimes = $validated['preferred_time'] ?? [];
 
-                    // If we have both, we create a combination? 
+                    // If we have both, we create a combination?
                     // Or just store them? The current UI seems to allow multiple.
                     // For now, let's store each pattern and each time range combination if they are both provided.
                     // Actually, the current schema is one record per preference.
@@ -203,7 +201,6 @@ class InstructorPreferenceController extends Controller
 
         $user = auth()->user();
         $instructor = $user->instructor;
-
         if (!$instructor) {
             return back()->with('error', 'Instructor profile not found.');
         }

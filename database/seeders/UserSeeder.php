@@ -13,14 +13,20 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Fathi',
-            'email' => 'fathi@gmail.com',
-            'role' => 'admin',
-        ]);
-        User::factory()->create([
-            'name' => 'Mohammad',
-            'email' => 'moh@gmail.com',
-        ]);
+        User::firstOrCreate(
+            ['email' => 'fathi@gmail.com'],
+            [
+                'name' => 'Fathi',
+                'role' => 'admin',
+                'password' => '$2y$12$VLJp66Z7YF0O6CkceUF3fu.9vCsSlu13KWsDOsYTRqs.FAIddYh3i', // Default hash or factory default
+            ]
+        );
+        User::firstOrCreate(
+            ['email' => 'moh@gmail.com'],
+            [
+                'name' => 'Mohammad',
+                'password' => '$2y$12$VLJp66Z7YF0O6CkceUF3fu.9vCsSlu13KWsDOsYTRqs.FAIddYh3i',
+            ]
+        );
     }
 }

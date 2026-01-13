@@ -33,81 +33,88 @@ class ScheduleResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('semester.name')
-                    ->label('Semester')
-                    ->sortable()
-                    ->searchable(),
+                    TextColumn::make('semester.name')
+                        ->label('Semester')
+                        ->sortable()
+                        ->searchable(),
 
-                TextColumn::make('course.code')
-                    ->label('Course Code')
-                    ->sortable()
-                    ->searchable(),
+                    TextColumn::make('course.code')
+                        ->label('Course Code')
+                        ->sortable()
+                        ->searchable(),
 
-                TextColumn::make('course.name')
-                    ->label('Course Name')
-                    ->sortable()
-                    ->searchable(),
+                    TextColumn::make('course.name')
+                        ->label('Course Name')
+                        ->sortable()
+                        ->searchable(),
 
-                TextColumn::make('course.department.name')
-                    ->label('Department')
-                    ->sortable()
-                    ->searchable(),
+                    TextColumn::make('course.department.name')
+                        ->label('Department')
+                        ->sortable()
+                        ->searchable(),
 
-                TextColumn::make('id')
-                    ->label('Section #')
-                    ->sortable(),
+                    TextColumn::make('id')
+                        ->label('Section #')
+                        ->sortable(),
 
-                TextColumn::make('instructor.user.name')
-                    ->label('Instructor')
-                    ->sortable()
-                    ->searchable()
-                    ->default('Not Assigned'),
+                    TextColumn::make('instructor.user.name')
+                        ->label('Instructor')
+                        ->sortable()
+                        ->searchable()
+                        ->default('Not Assigned'),
 
-                TextColumn::make('days')
-                    ->label('Day')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state),
+                    TextColumn::make('days')
+                        ->label('Day')
+                        ->badge()
+                        ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state),
 
-                TextColumn::make('time_range')
-                    ->label('Time')
-                    ->state(fn(Section $record) => \Carbon\Carbon::parse($record->start_time)->format('H:i') . ' - ' . \Carbon\Carbon::parse($record->end_time)->format('H:i'))
-                    ->sortable(['start_time']),
+                    TextColumn::make('time_range')
+                        ->label('Time')
+                        ->state(fn(Section $record) => \Carbon\Carbon::parse($record->start_time)->format('H:i') . ' - ' . \Carbon\Carbon::parse($record->end_time)->format('H:i'))
+                        ->sortable(['start_time']),
 
-                TextColumn::make('course.credits')
-                    ->label('C.H.')
-                    ->sortable(),
+                    TextColumn::make('course.credits')
+                        ->label('C.H.')
+                        ->sortable(),
 
-                TextColumn::make('status')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'Allocated', 'Active' => 'success',
-                        'Underloaded' => 'warning',
-                        'Admin Override' => 'danger',
-                        default => 'gray',
-                    }),
-            ])
+                    TextColumn::make('status')
+                        ->badge()
+                        ->color(fn(string $state): string => match ($state) {
+                            'Allocated', 'Active' => 'success',
+                            'Underloaded' => 'warning',
+                            'Admin Override' => 'danger',
+                            default => 'gray',
+                        }),
+                ])
             ->filters([
-                SelectFilter::make('semester')
-                    ->relationship('semester', 'name'),
+                    SelectFilter::make('semester')
+                        ->relationship('semester', 'name'),
 
-                SelectFilter::make('department')
-                    ->relationship('course.department', 'name'),
+                    SelectFilter::make('department')
+                        ->relationship('course.department', 'name'),
 
-                SelectFilter::make('course')
-                    ->relationship('course', 'name'),
+                    SelectFilter::make('course')
+                        ->relationship('course', 'name'),
 
-                SelectFilter::make('instructor')
-                    ->relationship('instructor.user', 'name'),
-            ])
+                    SelectFilter::make('instructor')
+                        ->relationship('instructor.user', 'name'),
+                ])
             ->recordActions([
-                EditAction::make()
-                    ->label('Override'),
-            ])
+                    EditAction::make()
+                        ->label('Override')
+                        ->before(function (array $data, Section $record) {
+                            try {
+                                (new \App\Services\Scheduling\SectionValidator())->validate($data, $record);
+                            } catch (\Exception $e) {
+                                throw new \Filament\Support\Exceptions\Halt();
+                            }
+                        }),
+                ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
+                    BulkActionGroup::make([
+                        DeleteBulkAction::make(),
+                    ]),
+                ])
             ->defaultSort('start_time');
     }
 
