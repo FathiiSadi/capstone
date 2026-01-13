@@ -7,19 +7,30 @@ use App\Models\Section;
 use App\Models\Semester;
 use App\Models\Instructor;
 use App\Models\Department;
-use Filament\Actions\Action;
+use Filament\Actions\Action; // <--- Import for the button
 use Filament\Resources\Pages\Page;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Collection;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf; // <--- Import for PDF
 
 class Timetable extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    protected static string $resource = ScheduleResource::class;
+    protected string $view = 'filament.resources.schedule-resource.pages.timetable';
+    protected static ?string $title = 'Master Schedule';
+
+    public ?int $semester_id = null;
+    public ?int $instructor_id = null;
+    public ?int $department_id = null;
+    public ?array $data = [];
+
+    // --- 1. HEADER ACTIONS (The PDF Button) ---
     protected function getHeaderActions(): array
     {
         return [
@@ -27,11 +38,14 @@ class Timetable extends Page implements HasForms
                 ->label('Export to PDF')
                 ->icon('heroicon-m-arrow-down-tray')
                 ->action(function () {
-                    $sections = $this->sections;
+                    // Get the filtered sections using the property below
+                    $sections = $this->sections; 
+                    
                     $pdf = Pdf::loadView('filament.resources.schedule-resource.pages.timetable-pdf', [
                         'sections' => $sections,
                         'semester' => Semester::find($this->semester_id)
                     ]);
+
                     return response()->streamDownload(
                         fn() => print ($pdf->output()),
                         "schedule-semester-{$this->semester_id}.pdf"
@@ -40,20 +54,10 @@ class Timetable extends Page implements HasForms
         ];
     }
 
-    protected static string $resource = ScheduleResource::class;
-
-    protected string $view = 'filament.resources.schedule-resource.pages.timetable';
-
-    public ?int $semester_id = null;
-    public ?int $instructor_id = null;
-    public ?int $department_id = null;
-
     public function mount(): void
     {
         $this->semester_id = Semester::first()?->id;
-        $this->form->fill([
-            'semester_id' => $this->semester_id,
-        ]);
+        $this->form->fill(['semester_id' => $this->semester_id]);
     }
 
     public function form(Schema $schema): Schema
@@ -64,39 +68,39 @@ class Timetable extends Page implements HasForms
                     ->label('Semester')
                     ->options(Semester::all()->pluck('name', 'id'))
                     ->live()
-                    ->required(),
-                Select::make('instructor_id')
-                    ->label('Instructor')
-                    ->options(Instructor::with('user')->get()->pluck('user.name', 'id'))
-                    ->live()
-                    ->placeholder('All Instructors'),
+                    ->required()
+                    ->afterStateUpdated(fn ($state) => $this->semester_id = $state),
                 Select::make('department_id')
                     ->label('Department')
                     ->options(Department::all()->pluck('name', 'id'))
                     ->live()
-                    ->placeholder('All Departments'),
+                    ->placeholder('All Departments')
+                    ->afterStateUpdated(fn ($state) => $this->department_id = $state),
+                Select::make('instructor_id')
+                    ->label('Instructor')
+                    ->options(Instructor::with('user')->get()->pluck('user.name', 'id'))
+                    ->live()
+                    ->placeholder('All Instructors')
+                    ->afterStateUpdated(fn ($state) => $this->instructor_id = $state),
             ])
+            ->statePath('data')
             ->columns(3);
     }
 
+    // --- Data Fetching Logic ---
+
     public function getSectionsProperty(): Collection
     {
-        if (!$this->semester_id) {
-            return collect();
-        }
+        if (!$this->semester_id) return collect();
 
         $query = Section::query()
             ->where('semester_id', $this->semester_id)
             ->with(['course.department', 'instructor.user', 'room']);
 
-        if ($this->instructor_id) {
-            $query->where('instructor_id', $this->instructor_id);
-        }
-
+        if ($this->instructor_id) $query->where('instructor_id', $this->instructor_id);
+        
         if ($this->department_id) {
-            $query->whereHas('course', function ($q) {
-                $q->where('department_id', $this->department_id);
-            });
+            $query->whereHas('course', fn($q) => $q->where('department_id', $this->department_id));
         }
 
         return $query->get();
@@ -105,92 +109,48 @@ class Timetable extends Page implements HasForms
     public function getTimetableData(): array
     {
         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $slots = $this->getTimeSlots(); 
         $sections = $this->sections;
 
         $data = [];
+
         foreach ($days as $day) {
-            $data[$day] = $sections->filter(function ($section) use ($day) {
-                $daysArray = is_array($section->days) ? $section->days : [$section->days];
-                return in_array($day, $daysArray);
-            })->sortBy('start_time');
+            $daySlots = [];
+            for ($i = 0; $i < count($slots); $i++) {
+                $slotStartStr = $slots[$i];
+                $slotStart = Carbon::parse($slotStartStr);
+                $slotEnd = $slotStart->copy()->addMinutes(90); 
+
+                $daySlots[$slotStartStr] = $sections->filter(function ($section) use ($day, $slotStart, $slotEnd) {
+                    $sectionDays = is_array($section->days) ? $section->days : (json_decode($section->days, true) ?? []);
+                    if (!in_array($day, $sectionDays)) return false;
+
+                    $secStart = Carbon::parse($section->start_time);
+                    $secEnd = Carbon::parse($section->end_time);
+
+                    return $secStart->lt($slotEnd) && $secEnd->gt($slotStart);
+                });
+            }
+            $data[$day] = $daySlots;
         }
 
         return $data;
     }
 
-    public function getConflictsProperty(): Collection
+    public function getTimeSlots(): array
     {
-        $sections = $this->sections;
-        $conflicts = collect();
-
-        foreach ($sections as $sectionA) {
-            foreach ($sections as $sectionB) {
-                if ($sectionA->id === $sectionB->id) {
-                    continue;
-                }
-
-                // Check for Room Conflict
-                if ($sectionA->room_id && $sectionB->room_id && $sectionA->room_id === $sectionB->room_id) {
-                    if ($this->hasTimeOverlap($sectionA, $sectionB)) {
-                        $conflicts->push([
-                            'type' => 'Room Conflict',
-                            'section_a' => $sectionA,
-                            'section_b' => $sectionB,
-                            'message' => "Room {$sectionA->room->name} double booked."
-                        ]);
-                    }
-                }
-            }
-        }
-
-        return $conflicts->unique(function ($item) {
-            return $item['section_a']->id < $item['section_b']->id ?
-                $item['section_a']->id . '-' . $item['section_b']->id :
-                $item['section_b']->id . '-' . $item['section_a']->id;
-        });
-    }
-
-    protected function hasTimeOverlap($sectionA, $sectionB): bool
-    {
-        $daysA = is_array($sectionA->days) ? $sectionA->days : [$sectionA->days];
-        $daysB = is_array($sectionB->days) ? $sectionB->days : [$sectionB->days];
-
-        $commonDays = array_intersect($daysA, $daysB);
-
-        if (empty($commonDays)) {
-            return false;
-        }
-
-        return $sectionA->start_time < $sectionB->end_time && $sectionA->end_time > $sectionB->start_time;
+        return ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
     }
 
     public function getCourseColor(int $courseId): array
     {
         $palettes = [
-            // [Background, Border, Text, Accent, Shadow]
-            ['bg-indigo-500/10', 'border-indigo-500/20', 'text-indigo-600 dark:text-indigo-400', 'bg-indigo-500', 'shadow-indigo-500/20'],
-            ['bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-600 dark:text-emerald-400', 'bg-emerald-500', 'shadow-emerald-500/20'],
-            ['bg-violet-500/10', 'border-violet-500/20', 'text-violet-600 dark:text-violet-400', 'bg-violet-500', 'shadow-violet-500/20'],
-            ['bg-rose-500/10', 'border-rose-500/20', 'text-rose-600 dark:text-rose-400', 'bg-rose-500', 'shadow-rose-500/20'],
-            ['bg-sky-500/10', 'border-sky-500/20', 'text-sky-600 dark:text-sky-400', 'bg-sky-500', 'shadow-sky-500/20'],
-            ['bg-amber-500/10', 'border-amber-500/20', 'text-amber-600 dark:text-amber-400', 'bg-amber-500', 'shadow-amber-500/20'],
-            ['bg-fuchsia-500/10', 'border-fuchsia-500/20', 'text-fuchsia-600 dark:text-fuchsia-400', 'bg-fuchsia-500', 'shadow-fuchsia-500/20'],
-            ['bg-cyan-500/10', 'border-cyan-500/20', 'text-cyan-600 dark:text-cyan-400', 'bg-cyan-500', 'shadow-cyan-500/20'],
+            ['bg' => '#eff6ff', 'border' => '#bfdbfe', 'text' => '#1e3a8a'],
+            ['bg' => '#f0fdf4', 'border' => '#bbf7d0', 'text' => '#14532d'],
+            ['bg' => '#faf5ff', 'border' => '#e9d5ff', 'text' => '#581c87'],
+            ['bg' => '#fff1f2', 'border' => '#fecdd3', 'text' => '#881337'],
+            ['bg' => '#fff7ed', 'border' => '#fed7aa', 'text' => '#7c2d12'],
         ];
-
         return $palettes[$courseId % count($palettes)];
-    }
-
-    public function getTimeSlots(): array
-    {
-        // Define standard time slots for the grid header
-        return [
-            '08:30:00',
-            '10:00:00',
-            '11:30:00',
-            '13:00:00',
-            '14:30:00',
-            '16:00:00'
-        ];
     }
 }
