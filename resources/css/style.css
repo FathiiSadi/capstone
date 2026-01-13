@@ -54,7 +54,7 @@ body {
 .topbar img {
     height: 56px;
     filter: brightness(100%) drop-shadow(0 1px 2px rgba(0,0,0,0.2));
-    /* margin-left: 10px; */
+    margin-left: 10px;
 }
 
 /* Sidebar (Darker Navy) */
@@ -126,7 +126,7 @@ body {
 .page-title {
     font-size: 28px;
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: 18px;
     color: var(--brand-primary);
 }
 
@@ -136,7 +136,7 @@ body {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     background: #fff;
     padding: 18px;
-    margin-bottom: 18px;
+    margin-bottom: 5px;
     border-top: 3px solid var(--brand-accent);
 }
 
@@ -235,25 +235,26 @@ a:hover { color: #0284c7; text-decoration: underline; }
     background: var(--brand-light);
 }
 
-.login-card {
+/* .login-card {
     width: 420px;
     border-radius: 10px;
     padding: 28px;
     background: #fff;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+} */
+
+.login-logo {
+    max-width: 180px; /* Restricts logo width so it looks elegant */
+    height: auto;
+display: block;  /* Makes the image behave like a block */
+    margin-left: auto;
+    margin-right: auto;
 }
 
-.logo-circle {
-    background: var(--brand-primary);
-    color: #fff;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-}
+.login-card {
+    max-width: 420px;
+    width: 90%; 
+    border-radius: 16px !important; }
 
 /* ============================================
    6. RESPONSIVE STYLES (Mobile < 768px)

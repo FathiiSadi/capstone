@@ -31,7 +31,7 @@
             border-radius: 24px;
             box-shadow: var(--glass-shadow);
             padding: 2rem;
-            margin-bottom: 2rem;
+            margin-bottom: .5rem;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
@@ -44,7 +44,7 @@
             font-size: 2.5rem;
             font-weight: 800;
             color: #fff;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
@@ -55,7 +55,7 @@
             border-radius: 20px;
             overflow: hidden;
             position: relative;
-            padding: 1.5rem;
+            padding: 1rem;
             height: 100%;
         }
 
@@ -137,7 +137,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
         }
 
         .section-title {
