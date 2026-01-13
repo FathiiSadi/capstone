@@ -10,6 +10,11 @@
                     <h5 class="fw-bold text-dark">Create Account</h5>
                     <p class="text-muted small">Join the academic portal today</p>
                 </div>
+                <div>
+                    <h4 class="mb-0">Qalam Portal</h4>
+                    <small class="text-muted">Sign in to continue</small>
+                </div>
+            </div>
 
                 <x-forms.form method="POST" action="/auth/register" enctype="multipart/form-data" autocomplete="on">
                     

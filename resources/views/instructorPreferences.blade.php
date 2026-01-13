@@ -38,7 +38,6 @@
                                 <th>Courses</th>
                                 <th>Time Preferences</th>
                                 <th>Submitted On</th>
-                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -74,7 +73,6 @@
                                         @endif
                                     </td>
                                     <td>{{ $pref['submission_time']->format('Y-m-d H:i') }}</td>
-                                    <td><span class="badge bg-success">Submitted</span></td>
                                     <td>
                                         <div class="d-flex flex-column flex-sm-row gap-1">
                                             <a href="{{ route('instructor.preferences.show', $semesterId) }}"

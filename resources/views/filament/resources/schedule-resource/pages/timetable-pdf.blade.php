@@ -71,7 +71,7 @@
                         {{ $section->course->name }}
                     </td>
                     <td>{{ $section->section_number }}</td>
-                    <td>{{ $section->instructor->user->name ?? 'TBA' }}</td>
+                    <td>{{ $section->instructor?->user?->name ?? 'TBA' }}</td>
                     <td>{{ is_array($section->days) ? implode(', ', $section->days) : $section->days }}</td>
                     <td>
                         {{ \Carbon\Carbon::parse($section->start_time)->format('H:i') }} -

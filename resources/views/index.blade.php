@@ -166,7 +166,7 @@
                     <div class="d-flex justify-content-between align-items-end mb-5">
                         <div class="page-title mb-0">Hello, {{ explode(' ', $user->name)[0] }}!</div>
                         <div class="text-white text-opacity-75">
-                            {{ now()->format('l, F j, Y') }}
+                            {{ now()->format('l - F j, Y') }}
                         </div>
                     </div>
 
@@ -322,7 +322,6 @@
                             </div>
                         </div>
                     </div>
-
                 @else
                     <div class="glass-card text-center py-5">
                         <i class="bi bi-shield-lock text-secondary display-1 mb-4"></i>

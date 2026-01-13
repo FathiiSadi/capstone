@@ -10,6 +10,11 @@
                     <h5 class="fw-bold text-dark">Welcome Back</h5>
                     <p class="text-muted small">Sign in to your account to continue</p>
                 </div>
+                <div>
+                    <h4 class="mb-0">Qalam Portal</h4>
+                    <small class="text-muted">Sign in to continue</small>
+                </div>
+            </div>
 
                 <x-forms.form method="POST" action="/auth/login" enctype="multipart/form-data">
                     <div class="mb-3">

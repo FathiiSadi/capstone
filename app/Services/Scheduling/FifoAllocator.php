@@ -352,7 +352,7 @@ class FifoAllocator
         $daysString = implode(', ', $days);
         $roomInfo = $room ? " in {$room->name}" : " (No Room)";
         Log::info("Section assigned", [
-            'instructor' => $instructor->user->name ?? "ID: {$instructor->id}",
+            'instructor' => $instructor->user?->name ?? "ID: {$instructor->id}",
             'course' => $course->name,
             'section' => $sectionNumber,
             'days' => $daysString,
@@ -399,7 +399,7 @@ class FifoAllocator
     {
         $this->preferencesSkipped++;
 
-        $key = ($preference->instructor->user->name ?? "ID: {$preference->instructor->id}") . " - {$preference->course->name}";
+        $key = ($preference->instructor->user?->name ?? "ID: {$preference->instructor->id}") . " - {$preference->course->name}";
         $this->skipReasons[$key] = $reason;
 
         Log::info("Preference skipped", [
