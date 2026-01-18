@@ -1,0 +1,128 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: capstone-app:latest
+        container_name: capstone-app
+        restart: always
+        working_dir: /var/www
+        environment:
+            APP_ENV: production
+            APP_DEBUG: false
+            # Ensure these are provided in production environment
+            APP_KEY: ${APP_KEY}
+            DB_HOST: db
+            DB_PORT: 3306
+            DB_DATABASE: ${DB_DATABASE:-capstone}
+            DB_USERNAME: ${DB_USERNAME:-capstone}
+            DB_PASSWORD: ${DB_PASSWORD:-secret}
+            REDIS_HOST: redis
+            CACHE_STORE: redis
+            SESSION_DRIVER: redis
+            QUEUE_CONNECTION: redis
+        volumes:
+            - ./storage:/var/www/storage
+            - public_data:/var/www/public
+        networks:
+            - capstone-network
+        depends_on:
+            - db
+            - redis
+
+    worker:
+        image: capstone-app:latest
+        container_name: capstone-worker
+        restart: always
+        working_dir: /var/www
+        command: php artisan queue:work --tries=3 --timeout=90
+        environment:
+            APP_ENV: production
+            APP_DEBUG: false
+            APP_KEY: ${APP_KEY}
+            DB_HOST: db
+            DB_PORT: 3306
+            DB_DATABASE: ${DB_DATABASE:-capstone}
+            DB_USERNAME: ${DB_USERNAME:-capstone}
+            DB_PASSWORD: ${DB_PASSWORD:-secret}
+            REDIS_HOST: redis
+            CACHE_STORE: redis
+            SESSION_DRIVER: redis
+            QUEUE_CONNECTION: redis
+        volumes:
+            - ./storage:/var/www/storage
+        networks:
+            - capstone-network
+        depends_on:
+            - db
+            - redis
+
+    scheduler:
+        image: capstone-app:latest
+        container_name: capstone-scheduler
+        restart: always
+        working_dir: /var/www
+        command: php artisan schedule:work
+        environment:
+            APP_ENV: production
+            APP_DEBUG: false
+            APP_KEY: ${APP_KEY}
+            DB_HOST: db
+            DB_PORT: 3306
+            DB_DATABASE: ${DB_DATABASE:-capstone}
+            DB_USERNAME: ${DB_USERNAME:-capstone}
+            DB_PASSWORD: ${DB_PASSWORD:-secret}
+            REDIS_HOST: redis
+            CACHE_STORE: redis
+            SESSION_DRIVER: redis
+            QUEUE_CONNECTION: redis
+        volumes:
+            - ./storage:/var/www/storage
+        networks:
+            - capstone-network
+        depends_on:
+            - db
+            - redis
+
+    web:
+        image: nginx:alpine
+        container_name: capstone-nginx
+        restart: always
+        ports:
+            - "80:80"
+        volumes:
+            - public_data:/var/www/public
+            - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        networks:
+            - capstone-network
+        depends_on:
+            - app
+
+    db:
+        image: mysql:8.0
+        container_name: capstone-db
+        restart: always
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-capstone}
+            MYSQL_USER: ${DB_USERNAME:-capstone}
+            MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+        volumes:
+            - db-data:/var/lib/mysql
+        networks:
+            - capstone-network
+
+    redis:
+        image: redis:alpine
+        container_name: capstone-redis
+        restart: always
+        networks:
+            - capstone-network
+
+networks:
+    capstone-network:
+        driver: bridge
+
+volumes:
+    db-data:
+    public_data:
