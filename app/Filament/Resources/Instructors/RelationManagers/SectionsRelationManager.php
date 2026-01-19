@@ -60,7 +60,14 @@ class SectionsRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->before(function (array $data, Section $record) {
+                        try {
+                            (new \App\Services\Scheduling\SectionValidator())->validate($data, $record);
+                        } catch (\Exception $e) {
+                            throw new \Filament\Support\Exceptions\Halt();
+                        }
+                    }),
                 DeleteAction::make(),
             ])
             ->bulkActions([
