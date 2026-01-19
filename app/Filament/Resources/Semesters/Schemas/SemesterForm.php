@@ -26,7 +26,20 @@ class SemesterForm
                 Select::make('status')
                     ->options(['Draft' => 'Draft', 'Open' => 'Open', 'Running' => 'Running', 'closed' => 'Closed'])
                     ->default('closed')
-                    ->required(),
+                    ->required()
+                    ->rule(function (?\Illuminate\Database\Eloquent\Model $record) {
+                        return function (string $attribute, $value, \Closure $fail) use ($record) {
+                            if ($value === 'Open') {
+                                $exists = \App\Models\Semester::where('status', 'Open')
+                                    ->when($record, fn($q) => $q->where('id', '!=', $record->id))
+                                    ->exists();
+
+                                if ($exists) {
+                                    $fail('There is already an open semester. Only one semester can be open at a time.');
+                                }
+                            }
+                        };
+                    }),
             ]);
     }
 }

@@ -428,9 +428,13 @@ class SchedulerService
             ->with(['sections' => fn($q) => $q->where('semester_id', $semester->id)])
             ->get();
 
-        // Rule 1: Only allow instructors who are STILL UNDERLOADED
+        // Rule 1: Allow instructors who are NOT OVERLOADED (Under Max Credits)
         return $eligibleInstructors->filter(function ($instructor) use ($course, $semester) {
-            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+            $current = $this->creditCalculator->calculateTotalCredits($instructor, $semester);
+            $max = $this->creditCalculator->getMaxCredits($instructor);
+            $courseCredits = (float) ($course->credits ?? 3.0);
+
+            if ($current + $courseCredits > $max) {
                 return false;
             }
 

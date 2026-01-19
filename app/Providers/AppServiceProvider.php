@@ -19,6 +19,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Auto-assign default department to new Instructors
+        \App\Models\Instructor::created(function ($instructor) {
+            $defaultDept = \App\Models\Department::firstOrCreate(
+                ['name' => 'Computer Science'],
+                ['code' => 'CS']
+            );
+            $instructor->departments()->syncWithoutDetaching([$defaultDept->id]);
+        });
     }
 }

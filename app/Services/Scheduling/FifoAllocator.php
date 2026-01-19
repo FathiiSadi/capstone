@@ -60,15 +60,36 @@ class FifoAllocator
     }
 
     /**
-     * Get all preferences ordered by submission time (FIFO).
+     * Get all preferences ordered by Priority (Scarcity).
+     * Priority 1: Courses with fewer requests (Hardest to fill).
+     * Priority 2: Instructors with fewer preferences (Least flexible).
+     * Priority 3: Submission Time (FIFO).
      */
     protected function getPreferencesInFifoOrder(Semester $semester): Collection
     {
-        return InstructorPreference::query()
+        $preferences = InstructorPreference::query()
             ->where('semester_id', $semester->id)
             ->with(['instructor.departments', 'course', 'timeSlots'])
-            ->orderBy('submission_time', 'asc')
             ->get();
+
+        // Calculate metadata for sorting
+        $courseRequestCounts = $preferences->groupBy('course_id')->map(fn($g) => $g->count());
+
+        // Enhance collection with sorting keys
+        return $preferences->sortBy(function ($pref) use ($courseRequestCounts) {
+            $courseScarcity = $courseRequestCounts[$pref->course_id] ?? 999;
+
+            // Getting instructor's total preferences count is expensive in loop if we don't pre-calc, 
+            // but let's assume the collection is reasonable in size.
+            // Actually, we can just use the loaded collection to count this instructor's prefs.
+            // We can't easily access the parent collection inside sort, but we can do a quick lookup if we map it first.
+            // For simplicity, let's stick to Course Scarcity as primary.
+
+            return [
+                $courseScarcity, // Fewer requests = First
+                $pref->submission_time, // Then FIFO
+            ];
+        });
     }
 
     /**
@@ -82,10 +103,11 @@ class FifoAllocator
         $course = $preference->course;
 
         // Requirement: Once an instructor reaches their minimum required credit hours, stop assigning them sections.
-        if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-            $this->skipPreference($preference, "Stopping Condition: Instructor already reached min credits.");
-            return;
-        }
+        // REMOVED: We allow filling up to Max Credits for explicit preferences
+        // if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+        //    $this->skipPreference($preference, "Stopping Condition: Instructor already reached min credits.");
+        //    return;
+        // }
 
         // Rule: Department Qualification Check
         if (!$this->canAssignCourse($instructor, $course)) {
@@ -130,9 +152,10 @@ class FifoAllocator
             }
 
             // Check if instructor reached min credits inside the loop
-            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-                break;
-            }
+            // REMOVED: We allow filling up to Max Credits for explicit preferences
+            // if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+            //    break;
+            // }
 
             // Try to assign this time slot
             if ($this->tryAssignTimeSlot($instructor, $course, $timeSlot, $semester)) {
@@ -190,19 +213,44 @@ class FifoAllocator
             $slotsToTry = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
         }
 
+
+        // Flatten the combinations we want to try: [Pattern, StartTime]
+        $combinations = [];
         foreach ($dayPatterns as $pattern) {
-            $daysToAssign = $this->conflictChecker->getDayPair($pattern);
-
-            // Randomize slots order to avoid clustering? Or keep strict order?
-            // "Strict" usually implies trying what is asked. If "Any", random is good.
-            if ($baseStartTime === null) {
-                shuffle($slotsToTry);
-            }
-
             foreach ($slotsToTry as $startTime) {
-                if ($this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $startTime, $timeSlot->id)) {
-                    return true;
-                }
+                // Calculate current load for this slot to load-balance
+                $occupancy = Section::where('semester_id', $semester->id)
+                    ->where('start_time', $startTime)
+                    ->where(function ($query) use ($pattern) {
+                        $days = $this->conflictChecker->getDayPair($pattern);
+                        foreach ($days as $day) {
+                            $query->orWhereJsonContains('days', $day);
+                        }
+                    })
+                    ->count();
+
+                $combinations[] = [
+                    'pattern' => $pattern,
+                    'start_time' => $startTime,
+                    'occupancy' => $occupancy,
+                ];
+            }
+        }
+
+        // Sort combinations by occupancy (Least busy first)
+        // Add some randomization for equal occupancy to avoid deterministic clustering
+        usort($combinations, function ($a, $b) {
+            if ($a['occupancy'] === $b['occupancy']) {
+                return rand(-1, 1);
+            }
+            return $a['occupancy'] <=> $b['occupancy'];
+        });
+
+        foreach ($combinations as $combo) {
+            $daysToAssign = $this->conflictChecker->getDayPair($combo['pattern']);
+
+            if ($this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $combo['start_time'], $timeSlot->id)) {
+                return true;
             }
         }
 

@@ -40,12 +40,7 @@ class InstructorPreferenceController extends Controller
             });
 
         // Get active semester for new submissions
-        $activeSemester = Semester::where('status', 'active')->first();
-
-        // If no active semester, try to get the most recent semester
-        if (!$activeSemester) {
-            $activeSemester = Semester::orderBy('created_at', 'desc')->first();
-        }
+        $activeSemester = Semester::where('status', 'Open')->first();
 
         // Get available courses for the active semester
         $availableCourses = $activeSemester && $activeSemester->courses->isNotEmpty()
@@ -82,7 +77,18 @@ class InstructorPreferenceController extends Controller
         try {
             DB::beginTransaction();
 
-            // Delete existing preferences for this semester
+            // Check if schedule is already generated
+            $semester = Semester::find($validated['semester_id']);
+            $scheduleExists = $semester->sections()->exists();
+            $hasExisting = InstructorPreference::where('instructor_id', $instructor->id)
+                ->where('semester_id', $validated['semester_id'])
+                ->exists();
+
+            if ($scheduleExists && $hasExisting) {
+                return back()->with('error', 'Cannot modify preferences because a schedule has already been generated for this semester.');
+            }
+
+            // Delete existing preferences for this semester (Only if allowed)
             InstructorPreference::where('instructor_id', $instructor->id)
                 ->where('semester_id', $validated['semester_id'])
                 ->delete();
@@ -208,6 +214,12 @@ class InstructorPreferenceController extends Controller
         try {
             DB::beginTransaction();
 
+            // Check if schedule is already generated
+            $semester = Semester::find($semesterId);
+            if ($semester->sections()->exists()) {
+                return back()->with('error', 'Cannot update preferences because a schedule has already been generated for this semester.');
+            }
+
             // Delete existing preferences for this semester
             InstructorPreference::where('instructor_id', $instructor->id)
                 ->where('semester_id', $semesterId)
@@ -283,6 +295,12 @@ class InstructorPreferenceController extends Controller
         $instructor = $user->instructor;
 
         try {
+            // Check if schedule is already generated
+            $semester = Semester::find($semesterId);
+            if ($semester->sections()->exists()) {
+                return back()->with('error', 'Cannot delete preferences because a schedule has already been generated for this semester.');
+            }
+
             InstructorPreference::where('instructor_id', $instructor->id)
                 ->where('semester_id', $semesterId)
                 ->delete();
