@@ -6,7 +6,7 @@ frontend:
         php: 8.3
     preBuild:
       commands:
-        - sudo yum install -y php-cli php-common php-mysqlnd php-pdo php-xml php-mbstring php-gd php-zip wget unzip
+        - sudo yum install -y php-cli php-common php-mysqlnd php-pdo php-xml php-mbstring php-gd php-zip php-intl php-bcmath wget unzip
         - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
         - php composer-setup.php
         - php -r "unlink('composer-setup.php');"
@@ -15,6 +15,8 @@ frontend:
     build:
       commands:
         - npm run build
+        - php artisan migrate --force
+        - php artisan db:seed --force
         - php artisan filament:upgrade
         - php artisan config:cache
         - php artisan route:cache
