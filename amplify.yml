@@ -6,10 +6,11 @@ frontend:
         php: 8.3
     preBuild:
       commands:
-        - yum install -y php-cli php-zip wget unzip
+        - sudo yum install -y php-cli php-common php-mysqlnd php-pdo php-xml php-mbstring php-gd php-zip wget unzip
         - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        - php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-        - composer install --no-dev --optimize-autoloader
+        - php composer-setup.php
+        - php -r "unlink('composer-setup.php');"
+        - php composer.phar install --no-dev --optimize-autoloader
         - npm install
     build:
       commands:
