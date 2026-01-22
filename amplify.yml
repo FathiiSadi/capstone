@@ -1,0 +1,20 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - composer install --no-dev --optimize-autoloader
+        - npm install
+    build:
+      commands:
+        - npm run build
+        - php artisan config:cache
+        - php artisan route:cache
+  artifacts:
+    baseDirectory: public
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - vendor/**/*
