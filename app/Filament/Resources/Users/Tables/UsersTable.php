@@ -24,8 +24,7 @@ class UsersTable
                     ->sortable(),
                 TextColumn::make('role')
                     ->badge(),
-                TextColumn::make('department_id')
-                    ->numeric()
+                TextColumn::make('department.name')
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()

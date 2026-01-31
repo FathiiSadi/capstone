@@ -14,38 +14,55 @@ class InstructorPreferencesTable
     {
         return $table
             ->columns([
-                    TextColumn::make('instructor.user.name')
-                        ->searchable()
-                        ->sortable(),
-                    TextColumn::make('course.name')
-                        ->searchable()
-                        ->sortable(),
-                    TextColumn::make('semester.name')
-                        ->searchable()
-                        ->sortable(),
-                    TextColumn::make('submission_time')
-                        ->dateTime()
-                        ->sortable(),
-                    TextColumn::make('timeSlots')
-                        ->label('Preferred Time')
-                        ->formatStateUsing(function ($record) {
-                            return $record->timeSlots->map(function ($slot) {
-                                $days = is_array($slot->days) ? implode('/', $slot->days) : $slot->days;
-                                $time = $slot->start_time ? \Carbon\Carbon::parse($slot->start_time)->format('H:i') : 'Any Time';
-                                return "{$days} ($time)";
+                TextColumn::make('instructor.user.name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('course.name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('semester.name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('submission_time')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('timeSlots')
+                    ->label('Time Slots')
+                    ->badge()
+                    ->formatStateUsing(function ($record) {
+                        return $record->timeSlots->map(function ($slot) {
+                            $days = is_array($slot->days) ? implode('/', $slot->days) : $slot->days;
+
+                            if (empty($slot->start_time)) {
+                                return "{$days} (Any Time)";
+                            }
+
+                            $timeLabels = collect($slot->start_time)->map(function ($time) {
+                                return match ($time) {
+                                    '08:30:00' => 'Morning',
+                                    '11:30:00' => 'Noon',
+                                    '14:30:00' => 'Afternoon',
+                                    default => \Carbon\Carbon::parse($time)->format('H:i')
+                                };
                             })->join(', ');
-                        }),
-                ])
+
+                            return "{$days} ({$timeLabels})";
+                        })->join(', ');
+                    })
+                    ->color(function ($record) {
+                        return 'info';
+                    }),
+            ])
             ->filters([
-                    //
-                ])
+                //
+            ])
             ->recordActions([
-                    EditAction::make(),
-                ])
+                EditAction::make(),
+            ])
             ->toolbarActions([
-                    BulkActionGroup::make([
-                        DeleteBulkAction::make(),
-                    ]),
-                ]);
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ]);
     }
 }

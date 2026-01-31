@@ -26,10 +26,7 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <a href="/auth/register" class="small text-decoration-none" style="color: var(--brand-primary);">
-                        Create account
-                    </a>
-                    <a href="#" class="small text-decoration-none" style="color: var(--brand-accent);">
-                        Forgot password?
+                        Create account?
                     </a>
                 </div>
 

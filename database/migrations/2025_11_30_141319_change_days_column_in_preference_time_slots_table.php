@@ -13,7 +13,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE preference_time_slots MODIFY days VARCHAR(1000) NULL");
+        Schema::table('preference_time_slots', function (Blueprint $table) {
+            $table->string('days', 1000)->nullable()->change();
+        });
     }
 
     /**

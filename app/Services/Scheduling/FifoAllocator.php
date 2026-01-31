@@ -157,8 +157,12 @@ class FifoAllocator
             //    break;
             // }
 
-            // Try to assign this time slot
-            if ($this->tryAssignTimeSlot($instructor, $course, $timeSlot, $semester)) {
+            // Try to assign this time slot (Atomic Pair Logic)
+            $assignedSection = $this->tryAssignTimeSlot($instructor, $course, $timeSlot, $semester);
+            if ($assignedSection) {
+                // If tryAssignTimeSlot returned a section, it means it handled the potential double assignment internally.
+                // We just need to increment our pass counter.
+                // Note: If 2 sections were assigned, this still only counts as "one preference processed" which is correct.
                 $assignedCountThisPass++;
             }
         }
@@ -179,7 +183,7 @@ class FifoAllocator
         Course $course,
         $timeSlot,
         Semester $semester
-    ): bool {
+    ): ?Section {
         // days is now more likely to be an array from my controller update
         $daysValue = $timeSlot->days;
         if (is_string($daysValue)) {
@@ -187,10 +191,14 @@ class FifoAllocator
             $daysValue = $decoded ?: [$daysValue];
         }
 
-        // If days are NULL/Empty, user allows ANY day -> Try all patterns
-        $dayPatterns = (is_array($daysValue) && !empty($daysValue))
-            ? $daysValue
-            : ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
+        if (is_array($daysValue) && !empty($daysValue)) {
+            // The preference IS the pattern (e.g. ['Sunday', 'Wednesday'])
+            // We wrap it in an array because the loop expects a list of patterns to try.
+            $dayPatterns = [$daysValue];
+        } else {
+            // Defaults
+            $dayPatterns = ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
+        }
 
         // Map preferred time ranges to specific slots
         // Morning: 08:30–11:30
@@ -198,15 +206,14 @@ class FifoAllocator
         // Afternoon: 14:30–17:30
 
         $baseStartTime = $timeSlot->start_time;
+        // Normalize time (take first 5 chars 'HH:MM')
+        $baseParams = substr($baseStartTime ?? '', 0, 5);
         $slotsToTry = [];
 
-        if ($baseStartTime === '08:30:00') {
-            $slotsToTry = ['08:30:00', '10:00:00'];
-        } elseif ($baseStartTime === '11:30:00' || $baseStartTime === '12:00:00') {
-            $slotsToTry = ['11:30:00', '13:00:00'];
-        } elseif ($baseStartTime === '14:30:00' || $baseStartTime === '14:00:00') {
-            $slotsToTry = ['14:30:00', '16:00:00'];
-        } elseif (!empty($baseStartTime)) {
+        // For atomic pair assignment, we only try the EXACT preferred time
+        // Time range expansion is disabled to ensure deterministic consecutive assignment
+        if (!empty($baseStartTime)) {
+            // Use exact time specified
             $slotsToTry = [$baseStartTime];
         } else {
             // If time is NULL, user allows ANY time -> Try all standard slots
@@ -222,7 +229,7 @@ class FifoAllocator
                 $occupancy = Section::where('semester_id', $semester->id)
                     ->where('start_time', $startTime)
                     ->where(function ($query) use ($pattern) {
-                        $days = $this->conflictChecker->getDayPair($pattern);
+                        $days = is_array($pattern) ? $pattern : $this->conflictChecker->getDayPair($pattern);
                         foreach ($days as $day) {
                             $query->orWhereJsonContains('days', $day);
                         }
@@ -237,38 +244,71 @@ class FifoAllocator
             }
         }
 
-        // Sort combinations by occupancy (Least busy first)
-        // Add some randomization for equal occupancy to avoid deterministic clustering
-        usort($combinations, function ($a, $b) {
-            if ($a['occupancy'] === $b['occupancy']) {
-                return rand(-1, 1);
+        // Sort combinations:
+        // 1. Least Occupancy
+        // 2. Exact match of requested time (Priority)
+        // 3. Randomize otherwise
+        usort($combinations, function ($a, $b) use ($baseStartTime) {
+            if ($a['occupancy'] !== $b['occupancy']) {
+                return $a['occupancy'] <=> $b['occupancy'];
             }
-            return $a['occupancy'] <=> $b['occupancy'];
+            // Prioritize exact time match
+            $aExact = $a['start_time'] === $baseStartTime;
+            $bExact = $b['start_time'] === $baseStartTime;
+            if ($aExact && !$bExact)
+                return -1;
+            if (!$aExact && $bExact)
+                return 1;
+
+            return rand(-1, 1);
         });
 
         foreach ($combinations as $combo) {
-            $daysToAssign = $this->conflictChecker->getDayPair($combo['pattern']);
+            $pattern = $combo['pattern'];
+            $daysToAssign = is_array($pattern) ? $pattern : $this->conflictChecker->getDayPair($pattern);
 
-            if ($this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $combo['start_time'], $timeSlot->id)) {
-                return true;
+            // ATOMIC ASSIGNMENT LOGIC
+            // Check if we need to assign 2 sections atomically
+            // Rule: If course.sections >= 2, we MUST assign 2 sections consecutively.
+            // But we must also check if we have enough quota remaining.
+
+            $limit = (int) $course->sections;
+            $currentAssigned = $this->getCourseAssignmentCount($instructor, $course, $semester);
+            $quotaRemaining = ($limit > 0) ? ($limit - $currentAssigned) : 1; // Fallback 1 if unlimited
+
+            // User Requirement: "When an instructor selects a course, the system must assign exactly two linked sections"
+            // We interpret this as: If quota allows for 2, we try to assign 2. If valid, do it. If not, fail.
+            $needsPair = ($quotaRemaining >= 2);
+
+            if ($needsPair) {
+                // Try to assign PAIR (Original + Consecutive)
+                $pairResult = $this->attemptAtomicPairAssignment($instructor, $course, $semester, $daysToAssign, $combo['start_time'], $timeSlot->id);
+                if ($pairResult) {
+                    return $pairResult; // Returns the first section of the pair
+                }
+            } else {
+                // Try to assign SINGLE (Only 1 needed or left)
+                $section = $this->attemptAssignment($instructor, $course, $semester, $daysToAssign, $combo['start_time'], $timeSlot->id);
+                if ($section) {
+                    return $section;
+                }
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
      * Helper to attempt a single assignment.
      */
-    protected function attemptAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): bool
+    protected function attemptAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): ?Section
     {
         // Check section quota for this course/semester
-        // User Request: Make sections if there are no section available (Auto-Scaling)
-        // We relax the quota check to allow creating new sections if needed.
-        // if (!$this->hasAvailableSectionQuota($course, $semester)) {
-        //    $this->logSkip($timeSlotId, 'Section quota exceeded for course');
-        //    return false;
-        // }
+        // Rule 3: Strict Section Limits
+        if (!$this->hasAvailableSectionQuota($course, $semester)) {
+            $this->logSkip($timeSlotId, 'Section quota exceeded for course');
+            return null;
+        }
 
         // Calculate end time
         // User Requirement: Course duration = Hours / 2. (e.g. 3 hours = 1.5 hours per session)
@@ -277,7 +317,7 @@ class FifoAllocator
 
         // Check if within teaching day
         if (!$this->conflictChecker->isWithinTeachingDay($startTime, $endTime)) {
-            return false;
+            return null;
         }
 
         // Get instructor's existing sections
@@ -287,22 +327,21 @@ class FifoAllocator
 
         // Check for conflicts
         if ($this->conflictChecker->hasConflict($days, $startTime, $endTime, $existingSections)) {
-            return false;
+            return null;
         }
 
         // Check if instructor already has a section of THIS course at THIS time (even on diff days? 
         // User said: "Sections have different time slots (even on the same day pattern)")
         // This implies they can't have AI at 08:30 and AI at 08:30 again.
 
-        $this->assignSection($instructor, $course, $semester, $days, $startTime, $endTime);
-        return true;
+        return $this->assignSection($instructor, $course, $semester, $days, $startTime, $endTime);
     }
 
     /**
      * Try to assign default slots if no preference provided.
      * Sprays assignments across available time/day patterns to avoid overcrowding.
      */
-    protected function tryAssignDefaultSlots(Instructor $instructor, Course $course, Semester $semester): bool
+    protected function tryAssignDefaultSlots(Instructor $instructor, Course $course, Semester $semester): ?Section
     {
         $assigner = new SlotAssignmentService($this->creditCalculator, $this->conflictChecker);
         return $assigner->assignToOptimalSlot($instructor, $course, $semester, true);
@@ -337,17 +376,20 @@ class FifoAllocator
      */
     protected function hasAvailableSectionQuota(Course $course, Semester $semester): bool
     {
-        // Get the required sections from semester_courses pivot
-        $semesterCourse = DB::table('semester_courses')
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->first();
+        // Rule 3: Use the sections attribute from the course model
+        $maxSections = (int) $course->sections;
 
-        if (!$semesterCourse) {
-            return false;
+        // If course has 0 sections defined, maybe unlimited? Or check semester_courses?
+        // Assuming strictly follows attribute as per request.
+        if ($maxSections <= 0) {
+            // Fallback to semester_courses if attribute is missing/zero, though user emphasized attribute.
+            // Let's check semester_courses pivot as a secondary source or override
+            $semesterCourse = DB::table('semester_courses')
+                ->where('semester_id', $semester->id)
+                ->where('course_id', $course->id)
+                ->first();
+            $maxSections = $semesterCourse->sections_required ?? 999;
         }
-
-        $sectionsRequired = $semesterCourse->sections_required ?? 0;
 
         // Count currently assigned sections
         $assignedCount = Section::query()
@@ -355,7 +397,7 @@ class FifoAllocator
             ->where('course_id', $course->id)
             ->count();
 
-        return $assignedCount < $sectionsRequired;
+        return $assignedCount < $maxSections;
     }
 
     /**
@@ -368,7 +410,7 @@ class FifoAllocator
         array $days,
         string $startTime,
         string $endTime
-    ): void {
+    ): Section {
         // Calculate section number for this course in this semester
         $existingCount = Section::where('course_id', $course->id)
             ->where('semester_id', $semester->id)
@@ -379,7 +421,7 @@ class FifoAllocator
         // Find a suitable room
         $room = $this->findAvailableRoom($course, $days, $startTime, $endTime, $semester);
 
-        Section::create([
+        $section = Section::create([
             'course_id' => $course->id,
             'section_number' => $sectionNumber,
             'semester_id' => $semester->id,
@@ -402,6 +444,85 @@ class FifoAllocator
             'days' => $daysString,
             'time' => "{$startTime} - {$endTime}" . $roomInfo,
         ]);
+
+        return $section;
+    }
+
+    /**
+     * Try to assign a consecutive section immediately following the previous one.
+     */
+    /**
+     * Attempt to assign an atomic pair of sections (Consecutive).
+     * Returns the first section if successful, null otherwise.
+     */
+    protected function attemptAtomicPairAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): ?Section
+    {
+        $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
+        $index = array_search($startTime, $times);
+
+        // Check if next slot exists
+        if ($index === false || $index === count($times) - 1) {
+            // Cannot form a pair starting at this time
+            return null;
+        }
+        $nextStartTime = $times[$index + 1];
+
+        // 1. Validate First Slot (Dry Run)
+        if (!$this->canAssignAt($instructor, $course, $semester, $days, $startTime)) {
+            return null;
+        }
+
+        // 2. Validate Second Slot (Dry Run)
+        // Note: For the second slot conflict check, we must account for the FACT that the first slot WILL be assigned.
+        // However, `canAssignAt` checks existing DB records.
+        // Since we haven't written Slot 1 yet, `canAssignAt` for Slot 2 is clean...
+        // EXCEPT if Slot 1 and Slot 2 somehow overlap (they shouldn't if consecutive).
+        // Conflict checker logic:
+        // Slot 1: 08:30 - 10:00
+        // Slot 2: 10:00 - 11:30
+        // No overlap. So independent checks are valid.
+
+        if (!$this->canAssignAt($instructor, $course, $semester, $days, $nextStartTime)) {
+            return null;
+        }
+
+        // 3. Both valid -> Perform Assignments
+        $section1 = $this->assignSection($instructor, $course, $semester, $days, $startTime, $this->calculateEndTime($startTime, $course));
+        $this->assignSection($instructor, $course, $semester, $days, $nextStartTime, $this->calculateEndTime($nextStartTime, $course));
+
+        return $section1;
+    }
+
+    /**
+     * Helper to check if a specific slot is valid for assignment (Dry Run).
+     */
+    protected function canAssignAt($instructor, $course, $semester, $days, $startTime): bool
+    {
+        $endTime = $this->calculateEndTime($startTime, $course);
+
+        // Check teaching hours
+        if (!$this->conflictChecker->isWithinTeachingDay($startTime, $endTime)) {
+            return false;
+        }
+
+        // Check conflicts with existing sections
+        $existingSections = $instructor->sections()
+            ->where('semester_id', $semester->id)
+            ->get();
+
+        if ($this->conflictChecker->hasConflict($days, $startTime, $endTime, $existingSections)) {
+            return false;
+        }
+
+
+        // Room assignment is optional (assignSection allows null room_id)
+        return true;
+    }
+
+    protected function calculateEndTime($startTime, $course): string
+    {
+        $duration = ($course->hours ?? 3.0) / 2.0;
+        return $this->conflictChecker->calculateEndTime($startTime, (float) $duration);
     }
 
     protected function findAvailableRoom(Course $course, array $days, string $startTime, string $endTime, Semester $semester): ?\App\Models\Room

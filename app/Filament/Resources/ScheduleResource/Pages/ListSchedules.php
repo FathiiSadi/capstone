@@ -62,7 +62,6 @@ class ListSchedules extends ListRecords
                     }
                 })
                 ->modalHeading('Generate Semester Schedule')
-                ->modalDescription('This will run the FIFO scheduling algorithm for the selected semester.')
                 ->modalSubmitActionLabel('Start Generation'),
 
             Actions\Action::make('view_timetable')

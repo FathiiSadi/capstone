@@ -56,17 +56,35 @@ class SlotAssignmentService
                     })
                     ->count();
 
+                // Rule 4: Minimize Same-Course Conflicts
+                // Check if THIS course is already scheduled at this time (on overlapping days)
+                $sameCourseConflict = Section::where('semester_id', $semester->id)
+                    ->where('course_id', $course->id)
+                    ->where('start_time', $startTime)
+                    ->where(function ($query) use ($pattern) {
+                        $days = $this->conflictChecker->getDayPair($pattern);
+                        foreach ($days as $day) {
+                            $query->orWhereJsonContains('days', $day);
+                        }
+                    })
+                    ->count();
+
                 $potentialSlots[] = [
                     'pattern' => $pattern,
                     'start_time' => $startTime,
-                    'occupancy' => $occupancy
+                    'occupancy' => $occupancy,
+                    'same_course_conflict' => $sameCourseConflict,
                 ];
             }
         }
 
-        // Sort by occupancy ascending (least busy slots first)
-        // If occupancy is equal, shuffle to avoid always picking the same pattern
+        // Sort by same-course conflict (ASC) first, then occupancy (ASC)
         usort($potentialSlots, function ($a, $b) {
+            // Priority 1: Avoid same course at same time
+            if ($a['same_course_conflict'] !== $b['same_course_conflict']) {
+                return $a['same_course_conflict'] <=> $b['same_course_conflict'];
+            }
+            // Priority 2: Standard load balancing
             if ($a['occupancy'] === $b['occupancy']) {
                 return rand(-1, 1);
             }
@@ -98,12 +116,12 @@ class SlotAssignmentService
         return null;
     }
 
-    public function assignToOptimalSlot(Instructor $instructor, Course $course, Semester $semester, bool $checkLoad = true): bool
+    public function assignToOptimalSlot(Instructor $instructor, Course $course, Semester $semester, bool $checkLoad = true): ?Section
     {
         // 1. Capacity Check
         if ($checkLoad) {
             if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-                return false;
+                return null;
             }
 
             $currentCredits = $this->creditCalculator->calculateTotalCredits($instructor, $semester);
@@ -111,7 +129,7 @@ class SlotAssignmentService
             $courseCredits = (float) ($course->credits ?? 3.0);
 
             if ($currentCredits + $courseCredits > $maxCredits) {
-                return false;
+                return null;
             }
         }
 
@@ -119,11 +137,10 @@ class SlotAssignmentService
         $slot = $this->findOptimalSlot($instructor, $course, $semester);
 
         if ($slot) {
-            $this->createSection($instructor, $course, $semester, $slot['days'], $slot['start_time'], $slot['end_time']);
-            return true;
+            return $this->createSection($instructor, $course, $semester, $slot['days'], $slot['start_time'], $slot['end_time']);
         }
 
-        return false;
+        return null;
     }
 
     protected function createSection(Instructor $instructor, Course $course, Semester $semester, array $days, string $startTime, string $endTime): Section

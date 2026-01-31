@@ -20,8 +20,9 @@ class UserForm
                     ->email()
                     ->required(),
                 TextInput::make('password')
-                    ->disabled()
-                    ->dehydrated(false),
+                    ->password()
+                    ->dehydrated(fn($state) => filled($state))
+                    ->required(fn(string $operation): bool => $operation === 'create'),
                 DateTimePicker::make('email_verified_at')
                     ->label('Email Verified At')
                     ->nullable()
@@ -35,6 +36,6 @@ class UserForm
                     ->nullable()
                     ->required(),
 
-        ]);
+            ]);
     }
 }

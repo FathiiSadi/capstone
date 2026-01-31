@@ -80,16 +80,19 @@
                                                 <i class="bi bi-eye"></i>
                                                 <span class="d-none d-md-inline ms-1">View</span>
                                             </a>
-                                            <form action="{{ route('instructor.preferences.destroy', $semesterId) }}"
-                                                method="POST" class="d-inline"
-                                                onsubmit="return confirm('Are you sure you want to delete these preferences?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                    <span class="d-none d-md-inline ms-1">Delete</span>
-                                                </button>
-                                            </form>
+
+                                            @if($activeSemester && $activeSemester->status !== 'Scheduled' && !$activeSemester->sections()->exists())
+                                                <form action="{{ route('instructor.preferences.destroy', $semesterId) }}"
+                                                    method="POST" class="d-inline"
+                                                    onsubmit="return confirm('Are you sure you want to delete these preferences?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                        <span class="d-none d-md-inline ms-1">Delete</span>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -111,11 +114,28 @@
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         @if($activeSemester)
-                            <x-instructor-preference-form formId="addPrefForm"
-                                :action="route('instructor.preferences.store')" method="POST"
-                                :availableCourses="$availableCourses" :selectedCourseIds="old('course_ids', [])"
-                                :preferredDays="old('preferred_days', [])" :preferredTime="old('preferred_time', [])"
-                                :semesterId="$activeSemester->id" :semesterName="$activeSemester->name . ' - ' . ucfirst($activeSemester->type)" :isEdit="false" />
+                            @if($activeSemester->status === 'Scheduled' || $activeSemester->sections()->exists())
+                                <div class="modal-header bg-warning">
+                                    <h5 class="mb-0">Scheduling Complete</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center py-5">
+                                    <i class="bi bi-lock-fill text-warning" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Scheduling is Locked</h5>
+                                    <p class="text-muted">The schedule for this semester has been finalized or started. You
+                                        cannot submit
+                                        new preferences.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            @else
+                                <x-instructor-preference-form formId="addPrefForm"
+                                    :action="route('instructor.preferences.store')" method="POST"
+                                    :availableCourses="$availableCourses" :selectedCourseIds="old('course_ids', [])"
+                                    :preferredDays="old('preferred_days', [])" :preferredTime="old('preferred_time', [])"
+                                    :semesterId="$activeSemester->id" :semesterName="$activeSemester->name . ' - ' . ucfirst($activeSemester->type)" :isEdit="false" />
+                            @endif
                         @else
                             <div class="modal-header bg-warning">
                                 <h5 class="mb-0">No Active Semester</h5>
@@ -140,6 +160,9 @@
 
         </main>
     </div>
+
+    <!-- JQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />

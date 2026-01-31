@@ -79,12 +79,8 @@ class InstructorPreferenceController extends Controller
 
             // Check if schedule is already generated
             $semester = Semester::find($validated['semester_id']);
-            $scheduleExists = $semester->sections()->exists();
-            $hasExisting = InstructorPreference::where('instructor_id', $instructor->id)
-                ->where('semester_id', $validated['semester_id'])
-                ->exists();
 
-            if ($scheduleExists && $hasExisting) {
+            if ($semester->status === 'Scheduled' || $semester->sections()->exists()) {
                 return back()->with('error', 'Cannot modify preferences because a schedule has already been generated for this semester.');
             }
 
@@ -216,7 +212,7 @@ class InstructorPreferenceController extends Controller
 
             // Check if schedule is already generated
             $semester = Semester::find($semesterId);
-            if ($semester->sections()->exists()) {
+            if ($semester->status === 'Scheduled' || $semester->sections()->exists()) {
                 return back()->with('error', 'Cannot update preferences because a schedule has already been generated for this semester.');
             }
 
@@ -297,7 +293,7 @@ class InstructorPreferenceController extends Controller
         try {
             // Check if schedule is already generated
             $semester = Semester::find($semesterId);
-            if ($semester->sections()->exists()) {
+            if ($semester->status === 'Scheduled' || $semester->sections()->exists()) {
                 return back()->with('error', 'Cannot delete preferences because a schedule has already been generated for this semester.');
             }
 

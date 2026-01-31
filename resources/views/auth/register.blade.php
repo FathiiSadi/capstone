@@ -38,9 +38,9 @@
                                        placeholder="••••••••"/>
                     </div>
 
-                    <div class="d-flex justify-content-end align-items-center mb-4">
+                    <div class="d-flex align-items-center mb-4">
                         <a href="/auth/login" class="small text-decoration-none" style="color: var(--brand-primary);">
-                            Already have an account? Login
+                            Already have an account?
                         </a>
                     </div>
 

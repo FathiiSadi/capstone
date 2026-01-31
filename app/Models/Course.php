@@ -24,6 +24,7 @@ class Course extends Model
 
     protected $casts = [
         'office_hours' => 'boolean',
+        'sections' => 'integer',
     ];
 
     public function department(): BelongsTo

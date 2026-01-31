@@ -16,8 +16,7 @@ class CoursesTable
             ->columns([
                 TextColumn::make('name')
                     ->searchable(),
-                TextColumn::make('department_id')
-                    ->numeric()
+                TextColumn::make('department.name')
                     ->sortable(),
                 TextColumn::make('code')
                     ->searchable(),
