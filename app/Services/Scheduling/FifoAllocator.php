@@ -115,10 +115,11 @@ class FifoAllocator
             return;
         }
 
-        // Rule: Section Limit (Max 2 sections of the same course)
+        // Rule: Section Limit (Max N sections of the same course per instructor, typically 2)
+        $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
         $currentAssignmentCount = $this->getCourseAssignmentCount($instructor, $course, $semester);
-        if ($currentAssignmentCount >= 2) {
-            $this->skipPreference($preference, 'Section limit reached: Max 2 sections per course.');
+        if ($currentAssignmentCount >= $perInstructorLimit) {
+            $this->skipPreference($preference, "Section limit reached: Max {$perInstructorLimit} sections per course.");
             return;
         }
 
@@ -145,9 +146,9 @@ class FifoAllocator
         }
 
         $assignedCountThisPass = 0;
+        $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
         foreach ($timeSlots as $timeSlot) {
-            // Check if we've already assigned 2 sections of THIS course
-            if ($this->getCourseAssignmentCount($instructor, $course, $semester) >= 2) {
+            if ($this->getCourseAssignmentCount($instructor, $course, $semester) >= $perInstructorLimit) {
                 break;
             }
 
@@ -194,9 +195,10 @@ class FifoAllocator
         if (is_array($daysValue) && !empty($daysValue)) {
             // The preference IS the pattern (e.g. ['Sunday', 'Wednesday'])
             // We wrap it in an array because the loop expects a list of patterns to try.
-            $dayPatterns = [$daysValue];
+            // IMPORTANT: We also add fallback patterns to try if the preferred one fails
+            $dayPatterns = [$daysValue, 'Mon/Thu', 'Tue/Sat'];
         } else {
-            // Defaults
+            // Defaults - try all patterns
             $dayPatterns = ['Sun/Wed', 'Mon/Thu', 'Tue/Sat'];
         }
 
@@ -222,8 +224,9 @@ class FifoAllocator
 
 
         // Flatten the combinations we want to try: [Pattern, StartTime]
+        // Include pattern_index so we prefer instructor's preferred slot first (deterministic).
         $combinations = [];
-        foreach ($dayPatterns as $pattern) {
+        foreach ($dayPatterns as $patternIndex => $pattern) {
             foreach ($slotsToTry as $startTime) {
                 // Calculate current load for this slot to load-balance
                 $occupancy = Section::where('semester_id', $semester->id)
@@ -238,29 +241,34 @@ class FifoAllocator
 
                 $combinations[] = [
                     'pattern' => $pattern,
+                    'pattern_index' => $patternIndex,
                     'start_time' => $startTime,
                     'occupancy' => $occupancy,
                 ];
             }
         }
 
-        // Sort combinations:
-        // 1. Least Occupancy
-        // 2. Exact match of requested time (Priority)
-        // 3. Randomize otherwise
+        // Sort combinations deterministically (same input → same output):
+        // 1. Least occupancy (spread load)
+        // 2. Exact match of requested time (instructor preference)
+        // 3. Preferred day pattern first (pattern_index 0 = instructor's choice)
+        // 4. Start time as tie-breaker
         usort($combinations, function ($a, $b) use ($baseStartTime) {
             if ($a['occupancy'] !== $b['occupancy']) {
                 return $a['occupancy'] <=> $b['occupancy'];
             }
-            // Prioritize exact time match
             $aExact = $a['start_time'] === $baseStartTime;
             $bExact = $b['start_time'] === $baseStartTime;
-            if ($aExact && !$bExact)
+            if ($aExact && !$bExact) {
                 return -1;
-            if (!$aExact && $bExact)
+            }
+            if (!$aExact && $bExact) {
                 return 1;
-
-            return rand(-1, 1);
+            }
+            if ($a['pattern_index'] !== $b['pattern_index']) {
+                return $a['pattern_index'] <=> $b['pattern_index'];
+            }
+            return strcmp($a['start_time'], $b['start_time']);
         });
 
         foreach ($combinations as $combo) {
@@ -268,16 +276,13 @@ class FifoAllocator
             $daysToAssign = is_array($pattern) ? $pattern : $this->conflictChecker->getDayPair($pattern);
 
             // ATOMIC ASSIGNMENT LOGIC
-            // Check if we need to assign 2 sections atomically
-            // Rule: If course.sections >= 2, we MUST assign 2 sections consecutively.
-            // But we must also check if we have enough quota remaining.
-
-            $limit = (int) $course->sections;
+            // Per-instructor limit: max sections of this course for this instructor (e.g. 2).
+            $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
             $currentAssigned = $this->getCourseAssignmentCount($instructor, $course, $semester);
-            $quotaRemaining = ($limit > 0) ? ($limit - $currentAssigned) : 1; // Fallback 1 if unlimited
+            $quotaRemaining = ($perInstructorLimit > 0) ? ($perInstructorLimit - $currentAssigned) : 1;
 
             // User Requirement: "When an instructor selects a course, the system must assign exactly two linked sections"
-            // We interpret this as: If quota allows for 2, we try to assign 2. If valid, do it. If not, fail.
+            // If the instructor can have 2 sections and has none yet, we must assign a pair (both at once). No partial assignment.
             $needsPair = ($quotaRemaining >= 2);
 
             if ($needsPair) {
@@ -372,32 +377,66 @@ class FifoAllocator
     }
 
     /**
-     * Check if course has available section quota.
+     * Get the global section cap for this course in this semester (total sections allowed/needed).
+     * Uses semester_courses.sections_required so multiple instructors can each get a pair.
+     */
+    protected function getGlobalSectionCap(Course $course, Semester $semester): int
+    {
+        $semesterCourse = DB::table('semester_courses')
+            ->where('semester_id', $semester->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if ($semesterCourse && isset($semesterCourse->sections_required) && (int) $semesterCourse->sections_required > 0) {
+            return (int) $semesterCourse->sections_required;
+        }
+
+        $fromCourse = (int) $course->sections;
+        return $fromCourse > 0 ? $fromCourse : 999;
+    }
+
+    /**
+     * Get max sections of this course per instructor (e.g. 2 = must assign pair).
+     */
+    protected function getPerInstructorSectionLimit(Course $course, Semester $semester): int
+    {
+        $semesterCourse = DB::table('semester_courses')
+            ->where('semester_id', $semester->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if ($semesterCourse && isset($semesterCourse->sections_per_instructor) && (int) $semesterCourse->sections_per_instructor > 0) {
+            return (int) $semesterCourse->sections_per_instructor;
+        }
+
+        $fromCourse = (int) $course->sections;
+        return $fromCourse > 0 ? $fromCourse : 2;
+    }
+
+    /**
+     * Check if course has available section quota (global: total sections for this course this semester).
      */
     protected function hasAvailableSectionQuota(Course $course, Semester $semester): bool
     {
-        // Rule 3: Use the sections attribute from the course model
-        $maxSections = (int) $course->sections;
-
-        // If course has 0 sections defined, maybe unlimited? Or check semester_courses?
-        // Assuming strictly follows attribute as per request.
-        if ($maxSections <= 0) {
-            // Fallback to semester_courses if attribute is missing/zero, though user emphasized attribute.
-            // Let's check semester_courses pivot as a secondary source or override
-            $semesterCourse = DB::table('semester_courses')
-                ->where('semester_id', $semester->id)
-                ->where('course_id', $course->id)
-                ->first();
-            $maxSections = $semesterCourse->sections_required ?? 999;
-        }
-
-        // Count currently assigned sections
+        $maxSections = $this->getGlobalSectionCap($course, $semester);
         $assignedCount = Section::query()
             ->where('semester_id', $semester->id)
             ->where('course_id', $course->id)
             ->count();
-
         return $assignedCount < $maxSections;
+    }
+
+    /**
+     * Check if course has room for 2 more sections (for atomic pair assignment).
+     */
+    protected function hasRoomForPair(Course $course, Semester $semester): bool
+    {
+        $maxSections = $this->getGlobalSectionCap($course, $semester);
+        $assignedCount = Section::query()
+            ->where('semester_id', $semester->id)
+            ->where('course_id', $course->id)
+            ->count();
+        return ($assignedCount + 2) <= $maxSections;
     }
 
     /**
@@ -457,6 +496,12 @@ class FifoAllocator
      */
     protected function attemptAtomicPairAssignment($instructor, $course, $semester, $days, $startTime, $timeSlotId): ?Section
     {
+        // Ensure global course quota has room for 2 sections (pair)
+        if (!$this->hasRoomForPair($course, $semester)) {
+            $this->logSkip($timeSlotId, 'Section quota would be exceeded by assigning pair');
+            return null;
+        }
+
         $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
         $index = array_search($startTime, $times);
 

@@ -52,12 +52,13 @@ class SchedulerService
                 $this->clearSchedule($semester);
             }
 
-            // Run FIFO allocation
-            $allocationResult = $this->fifoAllocator->allocate($semester);
+            // Multi-pass FIFO allocation: run until no new sections are assigned (full schedule in one go)
+            $maxPasses = (int) ($options['max_allocation_passes'] ?? 15);
+            $allocationResult = $this->runAllocationPasses($semester, $maxPasses);
 
-            // Optional: Assign least-chosen courses
+            // Optional: Assign least-chosen courses (multi-pass until no progress, to meet minimum load)
             if ($options['enable_least_chosen'] && $allocationResult->hasUnassignedCourses()) {
-                $this->assignLeastChosenCourses($semester);
+                $this->runLeastChosenPasses($semester, 10);
             }
 
             // Calculate credit hours and identify underloaded instructors
@@ -119,6 +120,67 @@ class SchedulerService
                 adminNotifications: [],
                 errorMessage: $e->getMessage()
             );
+        }
+    }
+
+    /**
+     * Run FIFO allocation in multiple passes until no new sections are assigned.
+     * Produces the full schedule in one invocation (same as clicking Generate multiple times without clearing).
+     */
+    protected function runAllocationPasses(Semester $semester, int $maxPasses): \App\Services\Scheduling\DTOs\AllocationResult
+    {
+        $totalAssigned = 0;
+        $totalProcessed = 0;
+        $totalSkipped = 0;
+        $skipReasons = [];
+        $statistics = [];
+        $pass = 0;
+
+        do {
+            $pass++;
+            $beforeCount = Section::where('semester_id', $semester->id)->count();
+            $result = $this->fifoAllocator->allocate($semester);
+            $afterCount = Section::where('semester_id', $semester->id)->count();
+            $assignedThisPass = $afterCount - $beforeCount;
+
+            $totalAssigned += $result->totalSectionsAssigned;
+            $totalProcessed += $result->totalPreferencesProcessed;
+            $totalSkipped += $result->totalPreferencesSkipped;
+            $skipReasons = array_merge($skipReasons, $result->skipReasons);
+            $statistics = array_merge($statistics, $result->statistics ?? []);
+
+            Log::info("Allocation pass {$pass}: assigned {$assignedThisPass} sections", [
+                'pass' => $pass,
+                'assigned_this_pass' => $assignedThisPass,
+                'total_sections' => $afterCount,
+            ]);
+        } while ($assignedThisPass > 0 && $pass < $maxPasses);
+
+        $unassignedCourses = $this->getUnassignedCourses($semester);
+
+        return new \App\Services\Scheduling\DTOs\AllocationResult(
+            totalSectionsAssigned: $totalAssigned,
+            totalPreferencesProcessed: $totalProcessed,
+            totalPreferencesSkipped: $totalSkipped,
+            unassignedCourses: $unassignedCourses,
+            skipReasons: $skipReasons,
+            statistics: $statistics
+        );
+    }
+
+    /**
+     * Run least-chosen assignment in multiple passes until no new sections are assigned.
+     * Helps meet minimum load for instructors.
+     */
+    protected function runLeastChosenPasses(Semester $semester, int $maxPasses): void
+    {
+        for ($pass = 1; $pass <= $maxPasses; $pass++) {
+            $beforeCount = Section::where('semester_id', $semester->id)->count();
+            $this->assignLeastChosenCourses($semester);
+            $afterCount = Section::where('semester_id', $semester->id)->count();
+            if (($afterCount - $beforeCount) === 0) {
+                break;
+            }
         }
     }
 
@@ -512,12 +574,14 @@ class SchedulerService
             }
         }
 
-        // Sort by occupancy ascending (least busy slots first)
+        // Sort by occupancy ascending (least busy slots first), then deterministically by pattern and time
         usort($potentialSlots, function ($a, $b) {
-            if ($a['occupancy'] === $b['occupancy']) {
-                return rand(-1, 1);
+            if ($a['occupancy'] !== $b['occupancy']) {
+                return $a['occupancy'] <=> $b['occupancy'];
             }
-            return $a['occupancy'] <=> $b['occupancy'];
+            $keyA = $a['pattern'] . '|' . $a['start_time'];
+            $keyB = $b['pattern'] . '|' . $b['start_time'];
+            return strcmp($keyA, $keyB);
         });
 
         foreach ($potentialSlots as $slot) {

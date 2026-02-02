@@ -178,13 +178,24 @@ test('atomic assignment fails if consecutive slot is blocked', function () {
     $result = $scheduler->generateSchedule($semester, ['clear_existing' => false]);
 
     // 4. Assertions
-    // Should have 0 sections of IT200 because the atomic pair (08:30, 10:00) failed due to 10:00 conflict.
-    // And it should NOT assign just 08:30.
+    // With relaxed fallback: When Sun/Wed atomic pair fails (10:00 blocked),
+    // the system should try alternative day patterns (Mon/Thu, Tue/Sat)
+    // and successfully assign 2 consecutive sections on those days.
 
     $sections = Section::where('semester_id', $semester->id)
         ->where('course_id', $course->id)
         ->where('instructor_id', $instructor->id)
+        ->orderBy('start_time')
         ->get();
 
-    expect($sections)->toHaveCount(0);
+    // Should have 2 sections (on alternative days, not Sun/Wed)
+    expect($sections)->toHaveCount(2);
+
+    // Verify they're consecutive
+    expect($sections[0]->start_time)->toBe('08:30:00');
+    expect($sections[1]->start_time)->toBe('10:00:00');
+
+    // Verify they're NOT on Sun/Wed (since that was blocked)
+    $days = $sections[0]->days;
+    expect($days)->not->toBe(['Sunday', 'Wednesday']);
 });
