@@ -29,11 +29,12 @@ class ImportDataAction extends Action
                         $headers = match ($resourceType) {
                             'users' => [
                                 'Name',
+                                'Password',
                                 'Email',
                                 'Role',
                                 'Department',
                                 'Position',
-                                'Min Credits'
+                                'Min Credits',
                             ],
                             'sections' => [
                                 'Course Code',
@@ -44,36 +45,27 @@ class ImportDataAction extends Action
                                 'Start Time',
                                 'End Time',
                                 'Room',
-                                'Status'
+                                'Status',
                             ],
                             'rooms' => [
                                 'Name',
                                 'Building',
                                 'Capacity',
-                                'Type'
+                                'Type',
                             ],
                             'departments' => [
                                 'Name',
                                 'Code',
-                                'Manager Name'
+                                'Manager Name',
                             ],
                             default => [ // courses
-                                'College',
-                                'Course Number',
-                                'Course Name',
-                                'CRS_NO',
-                                'Section Number',
-                                'Theoretical',
-                                'Hours',
-                                'Section Capacity',
-                                'No of registered',
-                                'Instructor Name',
-                                'Second Instructor',
-                                'Notes',
-                                'Time / Classroom',
-                                'pre-requisite',
-                                'Course Type',
-                                'For new admitted students only'
+                                'Name',
+                                'Code',
+                                'C.H.',
+                                'Credits',
+                                'Sections',
+                                'Department',
+                                'Office Hours',
                             ],
                         };
 

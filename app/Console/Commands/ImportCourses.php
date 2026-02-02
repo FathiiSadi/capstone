@@ -67,15 +67,50 @@ class ImportCourses extends Command
     {
         // row is now an associative array (key = slugged header)
 
-        $departmentName = $row['college'] ?? null;
-        $courseCode = $row['course_number'] ?? null;
-        $courseName = $row['course_name'] ?? null;
-        $sectionNumber = $row['section_number'] ?? null;
-        $hours = (int) ($row['hours'] ?? 3);
-        $instructorName = $row['instructor_name'] ?? null;
-        $timeClassroom = $row['time_classroom'] ?? null; // Slug might vary: 'time_classroom', 'time_classroom'
+        $departmentName = $row['department'] ?? $row['college'] ?? null;
+        $departmentCode = $row['code'] ?? null;
+        $managerName = $row['manager_name'] ?? null;
 
-        if (empty($courseCode) || empty($courseName)) {
+        $roomName = $row['room'] ?? $row['name'] ?? null;
+        $building = $row['building'] ?? null;
+        $capacity = $row['capacity'] ?? null;
+        $type = $row['type'] ?? null;
+
+        $courseCode = $row['code'] ?? $row['course_number'] ?? null;
+        $courseName = $row['name'] ?? $row['course_name'] ?? null;
+        // ... (rest of vars)
+        $sectionNumber = $row['section_number'] ?? null;
+        $hours = (int) ($row['ch'] ?? $row['c_h'] ?? $row['hours'] ?? 3);
+        $credits = (int) ($row['credits'] ?? $hours);
+        $sectionsCount = (int) ($row['sections'] ?? 1);
+        $officeHours = filter_var($row['office_hours'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $instructorName = $row['instructor_name'] ?? $row['name'] ?? null; // name if user import
+        $userEmail = $row['email'] ?? null;
+        $userPassword = $row['password'] ?? 'password';
+        $userRole = $row['role'] ?? 'instructor';
+        $userPosition = $row['position'] ?? null;
+        $userMinCredits = $row['min_credits'] ?? null;
+
+        $timeClassroom = $row['time_classroom'] ?? null;
+
+        // Detection logic
+        if (empty($courseCode) || empty($courseName) || !is_string($courseCode)) {
+            // Check if it's a User row
+            if (!empty($userEmail)) {
+                $this->processUserOnly($row);
+                return;
+            }
+            // Check if it's a Room row
+            if (!empty($roomName) && !empty($building)) {
+                $this->processRoomOnly($row);
+                return;
+            }
+            // Check if it's a Department row
+            if (!empty($departmentName)) {
+                $this->processDepartmentOnly($row);
+                return;
+            }
             return;
         }
 
@@ -89,7 +124,9 @@ class ImportCourses extends Command
                 'name' => $courseName,
                 'department_id' => $department->id,
                 'hours' => $hours,
-                'credits' => $hours, // Assuming credits = hours
+                'credits' => $credits,
+                'sections' => $sectionsCount,
+                'office_hours' => $officeHours,
             ]
         );
 
@@ -102,22 +139,37 @@ class ImportCourses extends Command
         $instructor = null;
         if (!empty($instructorName)) {
             $instructorUser = User::where('name', $instructorName)->first();
+            if (!$instructorUser && !empty($userEmail)) {
+                $instructorUser = User::where('email', $userEmail)->first();
+            }
+
             if (!$instructorUser) {
-                // Try reasonable email guess
-                $email = Str::slug($instructorName) . '@example.com';
+                $email = $userEmail ?? (Str::slug($instructorName) . '@example.com');
                 $instructorUser = User::firstOrCreate(
                     ['email' => $email],
                     [
                         'name' => $instructorName,
-                        'password' => Hash::make('password'),
-                        'role' => 'instructor',
+                        'password' => Hash::make($userPassword),
+                        'role' => $userRole,
+                        'department_id' => $department->id,
                     ]
                 );
             }
+
             // Ensure Instructor model matches
             $instructor = $instructorUser->instructor;
-            if (!$instructor) {
-                $instructor = Instructor::create(['user_id' => $instructorUser->id]);
+            if (!$instructor && ($instructorUser->role === 'instructor' || $instructorUser->role === 'admin')) {
+                $instructor = Instructor::create([
+                    'user_id' => $instructorUser->id,
+                    'position' => $userPosition,
+                    'min_credits' => $userMinCredits,
+                ]);
+            } elseif ($instructor) {
+                // Update instructor properties if provided
+                if ($userPosition)
+                    $instructor->update(['position' => $userPosition]);
+                if ($userMinCredits)
+                    $instructor->update(['min_credits' => $userMinCredits]);
             }
         }
 
@@ -275,6 +327,107 @@ class ImportCourses extends Command
                 'start_time' => $finalStartTime,
                 'end_time' => $finalEndTime,
                 'status' => 'Active',
+            ]
+        );
+    }
+
+    private function processUserOnly($row): void
+    {
+        $name = $row['name'] ?? null;
+        $email = $row['email'] ?? null;
+        $password = $row['password'] ?? 'password';
+        $role = $row['role'] ?? 'instructor';
+        $departmentName = $row['department'] ?? $row['college'] ?? null;
+        $position = $row['position'] ?? null;
+        $minCredits = $row['min_credits'] ?? null;
+
+        if (empty($name) || empty($email)) {
+            return;
+        }
+
+        $department = null;
+        if (!empty($departmentName)) {
+            $department = Department::firstOrCreate(['name' => $departmentName], ['code' => Str::slug($departmentName)]);
+        }
+
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make($password),
+                'role' => $role,
+                'department_id' => $department?->id,
+            ]);
+        } else {
+            $updateData = ['name' => $name, 'role' => $role];
+            if ($department)
+                $updateData['department_id'] = $department->id;
+            $user->update($updateData);
+        }
+
+        if ($user->role === 'instructor' || $user->role === 'admin') {
+            $instructor = $user->instructor;
+            if (!$instructor) {
+                Instructor::create([
+                    'user_id' => $user->id,
+                    'position' => $position,
+                    'min_credits' => $minCredits,
+                ]);
+            } else {
+                $updateData = [];
+                if ($position)
+                    $updateData['position'] = $position;
+                if ($minCredits)
+                    $updateData['min_credits'] = $minCredits;
+                if (!empty($updateData))
+                    $instructor->update($updateData);
+            }
+        }
+    }
+
+    private function processRoomOnly($row): void
+    {
+        $name = $row['name'] ?? $row['room'] ?? null;
+        $building = $row['building'] ?? null;
+        $capacity = $row['capacity'] ?? null;
+        $type = $row['type'] ?? 'Lecture';
+
+        if (empty($name))
+            return;
+
+        Room::updateOrCreate(
+            ['name' => $name],
+            [
+                'building' => $building,
+                'capacity' => $capacity,
+                'type' => $type,
+            ]
+        );
+    }
+
+    private function processDepartmentOnly($row): void
+    {
+        $name = $row['name'] ?? $row['department'] ?? $row['college'] ?? null;
+        $code = $row['code'] ?? Str::slug($name);
+        $managerName = $row['manager_name'] ?? null;
+
+        if (empty($name))
+            return;
+
+        $managerId = null;
+        if (!empty($managerName)) {
+            $manager = User::where('name', $managerName)->first();
+            if ($manager) {
+                $managerId = $manager->id;
+            }
+        }
+
+        Department::updateOrCreate(
+            ['name' => $name],
+            [
+                'code' => $code,
+                'manager_id' => $managerId,
             ]
         );
     }
