@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\InstructorPreferences\Schemas;
 
+use App\Support\PreferenceTimeSlotFormatter;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 
@@ -48,14 +50,24 @@ class InstructorPreferenceForm
                             ])
                             ->multiple()
                             ->required(),
-                        \Filament\Forms\Components\Select::make('start_time')
+                        Select::make('start_time')
                             ->label('Time Slot')
                             ->options([
-                                '08:30:00' => 'Morning (8:30 - 11:30)',
-                                '11:30:00' => 'Noon (11:30 - 2:30)',
-                                '14:30:00' => 'Afternoon (2:30 - 5:30)',
+                                '08:30:00' => 'Morning (08:30 - 11:30)',
+                                '11:30:00' => 'Noon (11:30 - 14:30)',
+                                '14:30:00' => 'Afternoon (14:30 - 17:30)',
                             ])
-                            ->multiple(),
+                            ->required()
+                            ->live()
+                            ->afterStateHydrated(function ($state, callable $set) {
+                                $set('end_time', PreferenceTimeSlotFormatter::calculateEndFromStart($state));
+                            })
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $set('end_time', PreferenceTimeSlotFormatter::calculateEndFromStart($state));
+                            }),
+                        Hidden::make('end_time')
+                            ->dehydrated()
+                            ->default(fn($get) => PreferenceTimeSlotFormatter::calculateEndFromStart($get('start_time'))),
                     ])
                     ->columnSpanFull(),
             ]);

@@ -8,6 +8,7 @@ use App\Models\InstructorPreference;
 use App\Models\Section;
 use App\Models\Semester;
 use App\Services\Scheduling\DTOs\AllocationResult;
+use App\Services\Scheduling\SectionQuotaService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -102,12 +103,10 @@ class FifoAllocator
         $instructor = $preference->instructor;
         $course = $preference->course;
 
-        // Requirement: Once an instructor reaches their minimum required credit hours, stop assigning them sections.
-        // REMOVED: We allow filling up to Max Credits for explicit preferences
-        // if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-        //    $this->skipPreference($preference, "Stopping Condition: Instructor already reached min credits.");
-        //    return;
-        // }
+        if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+            $this->skipPreference($preference, 'Stopping condition: instructor already satisfied minimum load.');
+            return;
+        }
 
         // Rule: Department Qualification Check
         if (!$this->canAssignCourse($instructor, $course)) {
@@ -116,8 +115,8 @@ class FifoAllocator
         }
 
         // Rule: Section Limit (Max N sections of the same course per instructor, typically 2)
-        $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
-        $currentAssignmentCount = $this->getCourseAssignmentCount($instructor, $course, $semester);
+        $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
+        $currentAssignmentCount = SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester);
         if ($currentAssignmentCount >= $perInstructorLimit) {
             $this->skipPreference($preference, "Section limit reached: Max {$perInstructorLimit} sections per course.");
             return;
@@ -146,9 +145,13 @@ class FifoAllocator
         }
 
         $assignedCountThisPass = 0;
-        $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
+        $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
         foreach ($timeSlots as $timeSlot) {
-            if ($this->getCourseAssignmentCount($instructor, $course, $semester) >= $perInstructorLimit) {
+            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+                break;
+            }
+
+            if (SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester) >= $perInstructorLimit) {
                 break;
             }
 
@@ -277,8 +280,8 @@ class FifoAllocator
 
             // ATOMIC ASSIGNMENT LOGIC
             // Per-instructor limit: max sections of this course for this instructor (e.g. 2).
-            $perInstructorLimit = $this->getPerInstructorSectionLimit($course, $semester);
-            $currentAssigned = $this->getCourseAssignmentCount($instructor, $course, $semester);
+            $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
+            $currentAssigned = SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester);
             $quotaRemaining = ($perInstructorLimit > 0) ? ($perInstructorLimit - $currentAssigned) : 1;
 
             // User Requirement: "When an instructor selects a course, the system must assign exactly two linked sections"
@@ -310,7 +313,7 @@ class FifoAllocator
     {
         // Check section quota for this course/semester
         // Rule 3: Strict Section Limits
-        if (!$this->hasAvailableSectionQuota($course, $semester)) {
+        if (!SectionQuotaService::hasAvailableSectionQuota($course, $semester)) {
             $this->logSkip($timeSlotId, 'Section quota exceeded for course');
             return null;
         }
@@ -361,87 +364,11 @@ class FifoAllocator
         return in_array($course->department_id, $instructorDepartmentIds);
     }
 
-    /**
-     * Get the number of sections already assigned to instructor for a course.
-     */
-    protected function getCourseAssignmentCount(
-        Instructor $instructor,
-        Course $course,
-        Semester $semester
-    ): int {
-        return Section::query()
-            ->where('semester_id', $semester->id)
-            ->where('instructor_id', $instructor->id)
-            ->where('course_id', $course->id)
-            ->count();
-    }
-
-    /**
-     * Get the global section cap for this course in this semester (total sections allowed/needed).
-     * Uses semester_courses.sections_required so multiple instructors can each get a pair.
-     */
-    protected function getGlobalSectionCap(Course $course, Semester $semester): int
-    {
-        $semesterCourse = DB::table('semester_courses')
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->first();
-
-        if ($semesterCourse && isset($semesterCourse->sections_required) && (int) $semesterCourse->sections_required > 0) {
-            return (int) $semesterCourse->sections_required;
-        }
-
-        $fromCourse = (int) $course->sections;
-        return $fromCourse > 0 ? $fromCourse : 999;
-    }
-
-    /**
-     * Get max sections of this course per instructor (e.g. 2 = must assign pair).
-     */
-    protected function getPerInstructorSectionLimit(Course $course, Semester $semester): int
-    {
-        $semesterCourse = DB::table('semester_courses')
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->first();
-
-        if ($semesterCourse && isset($semesterCourse->sections_per_instructor) && (int) $semesterCourse->sections_per_instructor > 0) {
-            return (int) $semesterCourse->sections_per_instructor;
-        }
-
-        $fromCourse = (int) $course->sections;
-        return $fromCourse > 0 ? $fromCourse : 2;
-    }
-
-    /**
-     * Check if course has available section quota (global: total sections for this course this semester).
-     */
-    protected function hasAvailableSectionQuota(Course $course, Semester $semester): bool
-    {
-        $maxSections = $this->getGlobalSectionCap($course, $semester);
-        $assignedCount = Section::query()
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->count();
-        return $assignedCount < $maxSections;
-    }
-
-    /**
-     * Check if course has room for 2 more sections (for atomic pair assignment).
-     */
     protected function hasRoomForPair(Course $course, Semester $semester): bool
     {
-        $maxSections = $this->getGlobalSectionCap($course, $semester);
-        $assignedCount = Section::query()
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->count();
-        return ($assignedCount + 2) <= $maxSections;
+        return SectionQuotaService::hasAvailableSectionQuota($course, $semester, 2);
     }
 
-    /**
-     * Assign a section to an instructor.
-     */
     protected function assignSection(
         Instructor $instructor,
         Course $course,

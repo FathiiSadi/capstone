@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\InstructorPreferences\Tables;
 
+use App\Support\PreferenceTimeSlotFormatter;
+use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -31,22 +33,17 @@ class InstructorPreferencesTable
                     ->badge()
                     ->formatStateUsing(function ($record) {
                         return $record->timeSlots->map(function ($slot) {
-                            $days = is_array($slot->days) ? implode('/', $slot->days) : $slot->days;
+                            $days = $slot->days ? implode(' / ', $slot->days) : 'Any Day';
 
-                            if (empty($slot->start_time)) {
+                            if (!$slot->start_time) {
                                 return "{$days} (Any Time)";
                             }
 
-                            $timeLabels = collect($slot->start_time)->map(function ($time) {
-                                return match ($time) {
-                                    '08:30:00' => 'Morning',
-                                    '11:30:00' => 'Noon',
-                                    '14:30:00' => 'Afternoon',
-                                    default => \Carbon\Carbon::parse($time)->format('H:i')
-                                };
-                            })->join(', ');
+                            $start = Carbon::parse($slot->start_time)->format('H:i');
+                            $endTime = $slot->end_time ?: PreferenceTimeSlotFormatter::calculateEndFromStart($slot->start_time);
+                            $end = $endTime ? Carbon::parse($endTime)->format('H:i') : '';
 
-                            return "{$days} ({$timeLabels})";
+                            return "{$days} ({$start} - {$end})";
                         })->join(', ');
                     })
                     ->color(function ($record) {

@@ -118,6 +118,10 @@ class SlotAssignmentService
 
     public function assignToOptimalSlot(Instructor $instructor, Course $course, Semester $semester, bool $checkLoad = true): ?Section
     {
+        if (!SectionQuotaService::hasAvailableSectionQuota($course, $semester)) {
+            return null;
+        }
+
         // 1. Capacity Check
         if ($checkLoad) {
             if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
@@ -137,6 +141,11 @@ class SlotAssignmentService
         $slot = $this->findOptimalSlot($instructor, $course, $semester);
 
         if ($slot) {
+            $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
+            if (SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester) >= $perInstructorLimit) {
+                return null;
+            }
+
             return $this->createSection($instructor, $course, $semester, $slot['days'], $slot['start_time'], $slot['end_time']);
         }
 

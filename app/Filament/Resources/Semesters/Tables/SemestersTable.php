@@ -19,6 +19,12 @@ class SemestersTable
                     ->searchable(),
                 TextColumn::make('type')
                     ->badge(),
+                TextColumn::make('start_date')
+                    ->date()
+                    ->sortable(),
+                TextColumn::make('end_date')
+                    ->date()
+                    ->sortable(),
                 TextColumn::make('preferences_open_at')
                     ->dateTime()
                     ->sortable(),

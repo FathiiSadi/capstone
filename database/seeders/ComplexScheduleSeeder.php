@@ -10,6 +10,7 @@ use App\Models\PreferenceTimeSlot;
 use App\Models\Section;
 use App\Models\Semester;
 use App\Models\User;
+use App\Support\PreferenceTimeSlotFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -192,6 +193,7 @@ class ComplexScheduleSeeder extends Seeder
                 'instructor_preference_id' => $preference->id,
                 'days' => $days,
                 'start_time' => $time,
+                'end_time' => PreferenceTimeSlotFormatter::calculateEndFromStart($time),
             ]);
         }
     }

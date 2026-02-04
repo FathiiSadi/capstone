@@ -131,7 +131,25 @@ class SectionForm
                     ->disabledOn('edit'),
                 TimePicker::make('start_time')
                     ->required(fn($get) => !\App\Models\Course::find($get('course_id'))?->office_hours)
-                    ->disabledOn('edit'),
+                    ->disabledOn('edit')
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                        if (!$state) {
+                            return;
+                        }
+
+                        $course = \App\Models\Course::find($get('course_id'));
+                        if (!$course) {
+                            return;
+                        }
+
+                        $duration = ($course->hours ?? 3.0) / 2.0;
+                        $endTime = \Carbon\Carbon::parse($state)
+                            ->addMinutes((int) ($duration * 60))
+                            ->format('H:i:s');
+
+                        $set('end_time', $endTime);
+                    }),
                 TimePicker::make('end_time')
                     ->required(fn($get) => !\App\Models\Course::find($get('course_id'))?->office_hours)
                     ->disabledOn('edit'),

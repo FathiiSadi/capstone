@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Semesters\Schemas;
 
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -18,6 +19,10 @@ class SemesterForm
                 Select::make('type')
                     ->options(['Fall' => 'Fall', 'Spring' => 'Spring', 'Summer' => 'Summer'])
                     ->default('Fall')
+                    ->required(),
+                DatePicker::make('start_date')
+                    ->required(),
+                DatePicker::make('end_date')
                     ->required(),
                 DateTimePicker::make('preferences_open_at')
                     ->required(),

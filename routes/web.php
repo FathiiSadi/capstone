@@ -33,6 +33,8 @@ Route::middleware(['instructor.access'])->group(function () {
     Route::put('/preferences/{semester}', [App\Http\Controllers\InstructorPreferenceController::class, 'update'])->name('instructor.preferences.update');
     Route::delete('/preferences/{semester}', [App\Http\Controllers\InstructorPreferenceController::class, 'destroy'])->name('instructor.preferences.destroy');
 
+    Route::get('/schedule', [App\Http\Controllers\ScheduleController::class, 'index'])->name('schedule.index');
+
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('instructor.profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('instructor.profile.update');
 });

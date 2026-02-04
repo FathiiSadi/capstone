@@ -14,12 +14,16 @@ class Semester extends Model
     protected $fillable = [
         'name',
         'type',
+        'start_date',
+        'end_date',
         'preferences_open_at',
         'preferences_closed_at',
         'status',
     ];
 
     protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
         'preferences_open_at' => 'datetime',
         'preferences_closed_at' => 'datetime',
     ];

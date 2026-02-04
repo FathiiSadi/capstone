@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Scheduling\SectionQuotaService;
 
 class SchedulerService
 {
@@ -251,10 +252,17 @@ class SchedulerService
             ->with(['instructor', 'course'])
             ->get();
 
-        $instructorLoads = $sections->groupBy('instructor_id')->map(function ($instructorSections) use ($semester) {
-            $instructor = $instructorSections->first()->instructor;
-            return $this->creditCalculator->getLoadStatus($instructor, $semester);
-        });
+        $instructorLoads = $sections->groupBy('instructor_id')
+            ->map(function ($instructorSections) use ($semester) {
+                $instructor = $instructorSections->first()->instructor;
+
+                if (!$instructor) {
+                    return null;
+                }
+
+                return $this->creditCalculator->getLoadStatus($instructor, $semester);
+            })
+            ->filter();
 
         return [
             'semester' => $semester,
@@ -462,21 +470,14 @@ class SchedulerService
      */
     protected function getSectionsNeeded($course, Semester $semester): int
     {
-        $semesterCourse = DB::table('semester_courses')
-            ->where('semester_id', $semester->id)
-            ->where('course_id', $course->id)
-            ->first();
-
-        if (!$semesterCourse) {
-            return 0;
-        }
-
         $assignedCount = Section::query()
             ->where('semester_id', $semester->id)
             ->where('course_id', $course->id)
             ->count();
 
-        return max(0, $semesterCourse->sections_required - $assignedCount);
+        $cap = SectionQuotaService::getGlobalSectionCap($course, $semester);
+
+        return max(0, $cap - $assignedCount);
     }
 
     /**
@@ -500,14 +501,10 @@ class SchedulerService
                 return false;
             }
 
-            $count = Section::query()
-                ->where('semester_id', $semester->id)
-                ->where('instructor_id', $instructor->id)
-                ->where('course_id', $course->id)
-                ->count();
+            $count = SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester);
+            $limit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
 
-            // Rule 2: Max 2 sections per course
-            if ($count >= 2) {
+            if ($count >= $limit) {
                 return false;
             }
 
@@ -525,6 +522,10 @@ class SchedulerService
      */
     protected function tryAssignAvailableSlot(Instructor $instructor, $course, Semester $semester): bool
     {
+        if (!SectionQuotaService::hasAvailableSectionQuota($course, $semester)) {
+            return false;
+        }
+
         // UNIVERSITY RULE: Standard time slots are based on day pairs
         $patterns = ['Sunday', 'Monday', 'Tuesday'];
         $times = ['08:30:00', '10:00:00', '11:30:00', '13:00:00', '14:30:00', '16:00:00'];
@@ -605,7 +606,11 @@ class SchedulerService
                 ->count();
             $sectionNumber = "S" . ($existingCount + 1);
 
-            // Assign the section (pair)
+            $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
+            if (SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester) >= $perInstructorLimit) {
+                return false;
+            }
+
             Section::create([
                 'course_id' => $course->id,
                 'section_number' => $sectionNumber,

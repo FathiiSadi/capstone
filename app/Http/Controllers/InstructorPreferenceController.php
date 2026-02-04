@@ -7,6 +7,7 @@ use App\Models\Instructor;
 use App\Models\InstructorPreference;
 use App\Models\PreferenceTimeSlot;
 use App\Models\Semester;
+use App\Support\PreferenceTimeSlotFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -60,7 +61,9 @@ class InstructorPreferenceController extends Controller
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
             'preferred_days' => 'nullable|array',
+            'preferred_days.*' => 'nullable|string|max:20',
             'preferred_time' => 'nullable|array',
+            'preferred_time.*' => 'in:Morning,Noon,Afternoon',
         ]);
 
         $user = auth()->user();
@@ -99,51 +102,11 @@ class InstructorPreferenceController extends Controller
                 ]);
 
                 // Create time slot preference if provided
-                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
-                    $preferredDays = $validated['preferred_days'] ?? [];
-                    $preferredTimes = $validated['preferred_time'] ?? [];
-
-                    // If we have both, we create a combination?
-                    // Or just store them? The current UI seems to allow multiple.
-                    // For now, let's store each pattern and each time range combination if they are both provided.
-                    // Actually, the current schema is one record per preference.
-                    // Let's store days as JSON array and use start_time as a representative for the range.
-
-                    $timeMap = [
-                        'Morning' => '08:30:00',
-                        'Noon' => '11:30:00',
-                        'Afternoon' => '14:30:00',
-                    ];
-
-                    foreach ($preferredDays as $dayPattern) {
-                        foreach ($preferredTimes as $timeRange) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => [$dayPattern], // Store as array
-                                'start_time' => $timeMap[$timeRange] ?? '08:30:00',
-                            ]);
-                        }
-                    }
-
-                    // If only days or only times provided
-                    if (empty($preferredTimes) && !empty($preferredDays)) {
-                        foreach ($preferredDays as $dayPattern) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => [$dayPattern],
-                                'start_time' => null,
-                            ]);
-                        }
-                    } elseif (empty($preferredDays) && !empty($preferredTimes)) {
-                        foreach ($preferredTimes as $timeRange) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => null,
-                                'start_time' => $timeMap[$timeRange] ?? '08:30:00',
-                            ]);
-                        }
-                    }
-                }
+                $this->persistPreferenceTimeSlots(
+                    $preference,
+                    $validated['preferred_days'] ?? [],
+                    $validated['preferred_time'] ?? []
+                );
             }
 
             DB::commit();
@@ -198,7 +161,9 @@ class InstructorPreferenceController extends Controller
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
             'preferred_days' => 'nullable|array',
+            'preferred_days.*' => 'nullable|string|max:20',
             'preferred_time' => 'nullable|array',
+            'preferred_time.*' => 'in:Morning,Noon,Afternoon',
         ]);
 
         $user = auth()->user();
@@ -231,44 +196,11 @@ class InstructorPreferenceController extends Controller
                 ]);
 
                 // Create time slot preference if provided
-                if (!empty($validated['preferred_days']) || !empty($validated['preferred_time'])) {
-                    $preferredDays = $validated['preferred_days'] ?? [];
-                    $preferredTimes = $validated['preferred_time'] ?? [];
-
-                    $timeMap = [
-                        'Morning' => '08:30:00',
-                        'Noon' => '11:30:00',
-                        'Afternoon' => '14:30:00',
-                    ];
-
-                    foreach ($preferredDays as $dayPattern) {
-                        foreach ($preferredTimes as $timeRange) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => [$dayPattern],
-                                'start_time' => $timeMap[$timeRange] ?? '08:30:00',
-                            ]);
-                        }
-                    }
-
-                    if (empty($preferredTimes) && !empty($preferredDays)) {
-                        foreach ($preferredDays as $dayPattern) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => [$dayPattern],
-                                'start_time' => null,
-                            ]);
-                        }
-                    } elseif (empty($preferredDays) && !empty($preferredTimes)) {
-                        foreach ($preferredTimes as $timeRange) {
-                            PreferenceTimeSlot::create([
-                                'instructor_preference_id' => $preference->id,
-                                'days' => null,
-                                'start_time' => $timeMap[$timeRange] ?? '08:30:00',
-                            ]);
-                        }
-                    }
-                }
+                $this->persistPreferenceTimeSlots(
+                    $preference,
+                    $validated['preferred_days'] ?? [],
+                    $validated['preferred_time'] ?? []
+                );
             }
 
             DB::commit();
@@ -306,6 +238,37 @@ class InstructorPreferenceController extends Controller
 
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to delete preferences. Please try again.');
+        }
+    }
+
+    protected function persistPreferenceTimeSlots(
+        InstructorPreference $preference,
+        array $preferredDays,
+        array $preferredTimes
+    ): void {
+        $hasDaySelection = collect($preferredDays)->filter(fn($value) => !empty($value))->isNotEmpty();
+        $hasTimeSelection = collect($preferredTimes)->filter(fn($value) => !empty($value))->isNotEmpty();
+
+        if (!$hasDaySelection && !$hasTimeSelection) {
+            return;
+        }
+
+        $dayTokens = $hasDaySelection ? $preferredDays : [null];
+        $timeTokens = $hasTimeSelection ? $preferredTimes : [null];
+
+        foreach ($dayTokens as $dayToken) {
+            $days = PreferenceTimeSlotFormatter::normalizeDaysValue($dayToken);
+
+            foreach ($timeTokens as $timeToken) {
+                $time = PreferenceTimeSlotFormatter::normalizeTimeValue($timeToken);
+
+                PreferenceTimeSlot::create([
+                    'instructor_preference_id' => $preference->id,
+                    'days' => $days,
+                    'start_time' => $time['start'],
+                    'end_time' => $time['end'],
+                ]);
+            }
         }
     }
 }

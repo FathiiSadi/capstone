@@ -8,6 +8,7 @@ use App\Models\Semester;
 use App\Models\Course;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use App\Services\Scheduling\SectionQuotaService;
 
 class SectionValidator
 {
@@ -46,6 +47,43 @@ class SectionValidator
             return;
         }
 
+        $isNewRecord = !$record;
+        $courseChanged = $record && $record->course_id != $course->id;
+        $semesterChanged = $record && $record->semester_id != $semester->id;
+        $requiresQuotaCheck = $isNewRecord || $courseChanged || $semesterChanged;
+
+        if ($requiresQuotaCheck && !SectionQuotaService::hasAvailableSectionQuota($course, $semester)) {
+            $cap = SectionQuotaService::getGlobalSectionCap($course, $semester);
+
+            Notification::make()
+                ->title('Course section limit reached')
+                ->body("{$course->code} already has {$cap} section(s) scheduled for {$semester->name}. Please update the course limit before adding more sections.")
+                ->danger()
+                ->send();
+
+            throw new \Filament\Support\Exceptions\Halt();
+        }
+
+        if ($instructorId) {
+            $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
+            $currentInstructorCount = Section::query()
+                ->where('semester_id', $semester->id)
+                ->where('course_id', $course->id)
+                ->where('instructor_id', $instructorId)
+                ->when($record, fn($query) => $query->where('id', '!=', $record->id))
+                ->count();
+
+            if ($currentInstructorCount >= $perInstructorLimit) {
+                Notification::make()
+                    ->title('Instructor section cap reached')
+                    ->body("{$instructor->user->name} already teaches {$perInstructorLimit} section(s) of {$course->code} this semester.")
+                    ->danger()
+                    ->send();
+
+                throw new \Filament\Support\Exceptions\Halt();
+            }
+        }
+
         // 1. Load Check
         // Only check if we are assigning a NEW instructor (different from current)
         // or if it's a new record and an instructor is assigned.
@@ -77,8 +115,8 @@ class SectionValidator
         if (isset($data['end_time'])) {
             $endTime = $data['end_time'];
         } else {
-            $hours = $course->hours ?? 3;
-            $endTime = $this->conflictChecker->calculateEndTime($startTime, $hours);
+            $duration = ($course->hours ?? 3.0) / 2.0;
+            $endTime = $this->conflictChecker->calculateEndTime($startTime, (float) $duration);
         }
 
         $daysChanged = isset($data['days']) && (!$record || $data['days'] != $record->days);

@@ -66,8 +66,23 @@
                                     </td>
                                     <td>
                                         @if($pref['time_slots']->isNotEmpty())
-                                            <small
-                                                class="text-muted">{{ is_array($pref['time_slots']->first()->days) ? implode(', ', $pref['time_slots']->first()->days) : $pref['time_slots']->first()->days }}</small>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach($pref['time_slots'] as $slot)
+                                                    @php
+                                                        $days = $slot->days ? implode(' / ', $slot->days) : 'Any Day';
+                                                        $start = $slot->start_time ? \Carbon\Carbon::parse($slot->start_time)->format('H:i') : null;
+                                                        $end = $slot->end_time ? \Carbon\Carbon::parse($slot->end_time)->format('H:i') : null;
+                                                    @endphp
+                                                    <span class="badge rounded-pill bg-light text-dark border">
+                                                        {{ $days }}
+                                                        @if($start)
+                                                            <span class="text-muted ms-1">{{ $start }} - {{ $end }}</span>
+                                                        @else
+                                                            <span class="text-muted ms-1">Any Time</span>
+                                                        @endif
+                                                    </span>
+                                                @endforeach
+                                            </div>
                                         @else
                                             <small class="text-muted">No preference</small>
                                         @endif

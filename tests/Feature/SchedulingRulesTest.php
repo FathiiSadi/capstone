@@ -80,6 +80,7 @@ test('schedule generation follows consecutive assignment and section limits', fu
         'instructor_preference_id' => $preference->id,
         'days' => ['Sunday', 'Wednesday'],
         'start_time' => '08:30:00',
+        'end_time' => '11:30:00',
     ]);
 
     // 3. Run Scheduler
@@ -170,6 +171,7 @@ test('atomic assignment fails if consecutive slot is blocked', function () {
         'instructor_preference_id' => $preference->id,
         'days' => ['Sunday', 'Wednesday'],
         'start_time' => '08:30:00',
+        'end_time' => '11:30:00',
     ]);
 
     // 3. Run Scheduler
@@ -198,4 +200,90 @@ test('atomic assignment fails if consecutive slot is blocked', function () {
     // Verify they're NOT on Sun/Wed (since that was blocked)
     $days = $sections[0]->days;
     expect($days)->not->toBe(['Sunday', 'Wednesday']);
+});
+
+test('scheduler stops assigning courses once minimum load is met', function () {
+    $user = User::factory()->create(['name' => 'Dr. Limit']);
+    $department = Department::create(['name' => 'Engineering', 'code' => 'EN']);
+    $instructor = Instructor::create([
+        'user_id' => $user->id,
+        'type' => 'Full-time',
+        'status' => 'Active',
+        'min_credits' => 6,
+    ]);
+    $instructor->departments()->attach($department->id);
+
+    $courseA = Course::create([
+        'name' => 'Thermodynamics',
+        'code' => 'EN201',
+        'hours' => 3,
+        'credits' => 3,
+        'sections' => 2,
+        'department_id' => $department->id,
+    ]);
+
+    $courseB = Course::create([
+        'name' => 'Mechanics',
+        'code' => 'EN202',
+        'hours' => 3,
+        'credits' => 3,
+        'sections' => 2,
+        'department_id' => $department->id,
+    ]);
+
+    $semester = Semester::create([
+        'name' => 'Spring 2026',
+        'type' => 'Spring',
+        'start_date' => now(),
+        'end_date' => now()->addMonths(4),
+        'status' => 'Open',
+        'is_active' => true,
+        'preferences_open_at' => now()->subDays(5),
+        'preferences_closed_at' => now()->addDays(5),
+    ]);
+
+    $semester->courses()->attach($courseA->id, ['sections_required' => 2, 'sections_per_instructor' => 2]);
+    $semester->courses()->attach($courseB->id, ['sections_required' => 2, 'sections_per_instructor' => 2]);
+
+    $preferenceA = InstructorPreference::create([
+        'instructor_id' => $instructor->id,
+        'course_id' => $courseA->id,
+        'semester_id' => $semester->id,
+        'submission_time' => now()->subMinutes(10),
+    ]);
+
+    PreferenceTimeSlot::create([
+        'instructor_preference_id' => $preferenceA->id,
+        'days' => ['Sunday', 'Wednesday'],
+        'start_time' => '08:30:00',
+        'end_time' => '11:30:00',
+    ]);
+
+    $preferenceB = InstructorPreference::create([
+        'instructor_id' => $instructor->id,
+        'course_id' => $courseB->id,
+        'semester_id' => $semester->id,
+        'submission_time' => now()->subMinutes(5),
+    ]);
+
+    PreferenceTimeSlot::create([
+        'instructor_preference_id' => $preferenceB->id,
+        'days' => ['Monday', 'Thursday'],
+        'start_time' => '08:30:00',
+        'end_time' => '11:30:00',
+    ]);
+
+    $scheduler = app(SchedulerService::class);
+    $scheduler->generateSchedule($semester, ['clear_existing' => true]);
+
+    $courseASections = Section::where('course_id', $courseA->id)
+        ->where('semester_id', $semester->id)
+        ->get();
+
+    $courseBSections = Section::where('course_id', $courseB->id)
+        ->where('semester_id', $semester->id)
+        ->get();
+
+    expect($courseASections)->toHaveCount(2);
+    expect($courseBSections)->toBeEmpty();
 });

@@ -10,6 +10,7 @@ use App\Models\InstructorPreference;
 use App\Models\PreferenceTimeSlot;
 use App\Models\Semester;
 use App\Models\User;
+use App\Support\PreferenceTimeSlotFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -148,11 +149,7 @@ class InstructorPreferencesSeeder extends Seeder
                     $times = ['08:30:00', '10:00:00', '11:30:00'];
                     $chosenTime = $times[array_rand($times)];
 
-                    PreferenceTimeSlot::create([
-                        'instructor_preference_id' => $pref->id,
-                        'days' => null, // Any Day
-                        'start_time' => $chosenTime,
-                    ]);
+                    $this->createPreferenceSlot($pref, null, $chosenTime);
                     break;
 
                 case 'DayFocused':
@@ -160,22 +157,14 @@ class InstructorPreferencesSeeder extends Seeder
                     $patterns = [['Sunday', 'Wednesday'], ['Monday', 'Thursday'], ['Tuesday', 'Saturday']];
                     $chosenPattern = $patterns[array_rand($patterns)];
 
-                    PreferenceTimeSlot::create([
-                        'instructor_preference_id' => $pref->id,
-                        'days' => $chosenPattern,
-                        'start_time' => null, // Any Time
-                    ]);
+                    $this->createPreferenceSlot($pref, $chosenPattern, null);
                     break;
 
                 case 'Minimal':
                     // Just 1 or 2 courses, maybe simple preference or none
                     if (rand(0, 1)) {
                         // Some have simple preference
-                        PreferenceTimeSlot::create([
-                            'instructor_preference_id' => $pref->id,
-                            'days' => ['Sunday', 'Wednesday'],
-                            'start_time' => '08:30:00',
-                        ]);
+                        $this->createPreferenceSlot($pref, ['Sunday', 'Wednesday'], '08:30:00');
                     }
                     break;
 
@@ -184,27 +173,25 @@ class InstructorPreferencesSeeder extends Seeder
                     // Multi-slot preferences: "I can do Sun/Wed Morning OR Mon/Thu Afternoon"
 
                     // Slot 1: Sun/Wed Morning
-                    PreferenceTimeSlot::create([
-                        'instructor_preference_id' => $pref->id,
-                        'days' => ['Sunday', 'Wednesday'],
-                        'start_time' => '08:30:00',
-                    ]);
+                    $this->createPreferenceSlot($pref, ['Sunday', 'Wednesday'], '08:30:00');
 
                     // Slot 2: Mon/Thu Afternoon (Alternative option)
-                    PreferenceTimeSlot::create([
-                        'instructor_preference_id' => $pref->id,
-                        'days' => ['Monday', 'Thursday'],
-                        'start_time' => '13:00:00',
-                    ]);
+                    $this->createPreferenceSlot($pref, ['Monday', 'Thursday'], '13:00:00');
 
                     // Slot 3: Tuesday all day?
-                    PreferenceTimeSlot::create([
-                        'instructor_preference_id' => $pref->id,
-                        'days' => ['Tuesday'],
-                        'start_time' => null, // Check availability 
-                    ]);
+                    $this->createPreferenceSlot($pref, ['Tuesday'], null);
                     break;
             }
         }
+    }
+
+    protected function createPreferenceSlot(InstructorPreference $preference, ?array $days, ?string $startTime): void
+    {
+        PreferenceTimeSlot::create([
+            'instructor_preference_id' => $preference->id,
+            'days' => $days,
+            'start_time' => $startTime,
+            'end_time' => $startTime ? PreferenceTimeSlotFormatter::calculateEndFromStart($startTime) : null,
+        ]);
     }
 }
