@@ -214,10 +214,21 @@ class SchedulerService
             $course = $courseData['course'];
             $sectionsNeeded = $courseData['sections_needed'];
 
-            // Find eligible instructors (any department allowed for least-chosen gap filling)
-            $eligibleInstructors = $this->findEligibleInstructors($course, $semester, true);
+            // 1. Get instructors from the specific department first
+            $deptInstructors = $this->findEligibleInstructors($course, $semester, false);
 
-            foreach ($eligibleInstructors as $instructor) {
+            // 2. Get instructors from any department (fallback)
+            $anyInstructors = $this->findEligibleInstructors($course, $semester, true);
+
+            // 3. filter out the department instructors from the 'any' list to avoid duplicates
+            // (We use the collection key, which is usually the instructor ID)
+            $otherInstructors = $anyInstructors->diffKeys($deptInstructors);
+
+            // 4. Merge: Department instructors come first, followed by others
+            $prioritizedInstructors = $deptInstructors->merge($otherInstructors);
+
+            // 5. Iterate through the prioritized list
+            foreach ($prioritizedInstructors as $instructor) {
                 if ($sectionsNeeded <= 0) {
                     break;
                 }
@@ -457,9 +468,9 @@ class SchedulerService
             return DB::table('semester_courses')
                 ->where('semester_id', $semester->id)
                 ->whereRaw('sections_required > (
-                    SELECT COUNT(*) 
-                    FROM sections 
-                    WHERE sections.course_id = semester_courses.course_id 
+                    SELECT COUNT(*)
+                    FROM sections
+                    WHERE sections.course_id = semester_courses.course_id
                     AND sections.semester_id = semester_courses.semester_id
                 )')
                 ->join('courses', 'courses.id', '=', 'semester_courses.course_id')
@@ -468,7 +479,7 @@ class SchedulerService
                 ->map(fn($row) => \App\Models\Course::find($row->id));
         }
 
-        // Fallback: If no specific semester_courses requirements are set, 
+        // Fallback: If no specific semester_courses requirements are set,
         // consider all courses that haven't reached their global limit yet (default is 2 sections per course)
         return \App\Models\Course::all()->filter(function ($course) use ($semester) {
             $assignedCount = Section::where('course_id', $course->id)
