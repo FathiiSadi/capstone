@@ -102,11 +102,8 @@ class CreditHourCalculator
      */
     public function getUnderloadedInstructors(Semester $semester): Collection
     {
-        // Get all instructors who have preferences for this semester
-        $instructorIds = \App\Models\InstructorPreference::query()
-            ->where('semester_id', $semester->id)
-            ->distinct()
-            ->pluck('instructor_id');
+        // Get all instructors
+        $instructorIds = Instructor::pluck('id');
 
         $underloaded = collect();
 

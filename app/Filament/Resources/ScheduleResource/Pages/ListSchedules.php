@@ -25,11 +25,11 @@ class ListSchedules extends ListRecords
                         ->default(\App\Models\Semester::first()?->id),
                     \Filament\Forms\Components\Toggle::make('clear_existing')
                         ->label('Clear Existing Schedule')
-                        ->default(true),
+                        ->default(false),
                     \Filament\Forms\Components\Toggle::make('enable_least_chosen')
                         ->label('Enable Least-Chosen Assignment')
                         ->helperText('Try to fill gaps for courses with no instructor preferences.')
-                        ->default(true),
+                        ->default(false),
                 ])
                 ->action(function (array $data, \App\Services\Scheduling\SchedulerService $schedulerService): void {
                     $semester = \App\Models\Semester::find($data['semester_id']);

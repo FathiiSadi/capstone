@@ -37,7 +37,7 @@ class SchedulerService
     {
         // Default options
         $options = array_merge([
-            'enable_least_chosen' => true,
+            'enable_least_chosen' => false,
             'clear_existing' => false,
             'notify_admin' => true,
             'strict_mode' => false,
@@ -214,8 +214,8 @@ class SchedulerService
             $course = $courseData['course'];
             $sectionsNeeded = $courseData['sections_needed'];
 
-            // Find eligible instructors (same department, not overloaded, no conflicts)
-            $eligibleInstructors = $this->findEligibleInstructors($course, $semester);
+            // Find eligible instructors (any department allowed for least-chosen gap filling)
+            $eligibleInstructors = $this->findEligibleInstructors($course, $semester, true);
 
             foreach ($eligibleInstructors as $instructor) {
                 if ($sectionsNeeded <= 0) {
@@ -451,18 +451,34 @@ class SchedulerService
      */
     protected function getUnassignedCourses(Semester $semester): Collection
     {
-        return DB::table('semester_courses')
-            ->where('semester_id', $semester->id)
-            ->whereRaw('sections_required > (
-                SELECT COUNT(*) 
-                FROM sections 
-                WHERE sections.course_id = semester_courses.course_id 
-                AND sections.semester_id = semester_courses.semester_id
-            )')
-            ->join('courses', 'courses.id', '=', 'semester_courses.course_id')
-            ->select('courses.*', 'semester_courses.sections_required')
-            ->get()
-            ->map(fn($row) => \App\Models\Course::find($row->id));
+        $hasSemesterCourses = DB::table('semester_courses')->where('semester_id', $semester->id)->exists();
+
+        if ($hasSemesterCourses) {
+            return DB::table('semester_courses')
+                ->where('semester_id', $semester->id)
+                ->whereRaw('sections_required > (
+                    SELECT COUNT(*) 
+                    FROM sections 
+                    WHERE sections.course_id = semester_courses.course_id 
+                    AND sections.semester_id = semester_courses.semester_id
+                )')
+                ->join('courses', 'courses.id', '=', 'semester_courses.course_id')
+                ->select('courses.*', 'semester_courses.sections_required')
+                ->get()
+                ->map(fn($row) => \App\Models\Course::find($row->id));
+        }
+
+        // Fallback: If no specific semester_courses requirements are set, 
+        // consider all courses that haven't reached their global limit yet (default is 2 sections per course)
+        return \App\Models\Course::all()->filter(function ($course) use ($semester) {
+            $assignedCount = Section::where('course_id', $course->id)
+                ->where('semester_id', $semester->id)
+                ->count();
+
+            $cap = SectionQuotaService::getGlobalSectionCap($course, $semester);
+
+            return $assignedCount < $cap;
+        });
     }
 
     /**
@@ -483,12 +499,15 @@ class SchedulerService
     /**
      * Find instructors eligible to teach a course.
      */
-    protected function findEligibleInstructors($course, Semester $semester): Collection
+    protected function findEligibleInstructors($course, Semester $semester, bool $anyDepartment = true): Collection
     {
-        // Get instructors in the same department
-        $eligibleInstructors = \App\Models\Instructor::query()
-            ->whereHas('departments', fn($q) => $q->where('departments.id', $course->department_id))
-            ->with(['sections' => fn($q) => $q->where('semester_id', $semester->id)])
+        $query = \App\Models\Instructor::query();
+
+        if (!$anyDepartment) {
+            $query->whereHas('departments', fn($q) => $q->where('departments.id', $course->department_id));
+        }
+
+        $eligibleInstructors = $query->with(['sections' => fn($q) => $q->where('semester_id', $semester->id)])
             ->get();
 
         // Rule 1: Allow instructors who are NOT OVERLOADED (Under Max Credits)

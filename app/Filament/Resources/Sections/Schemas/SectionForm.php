@@ -17,7 +17,31 @@ class SectionForm
                     ->relationship('course', 'name')
                     ->required()
                     ->live()
-                    ->disabledOn('edit'),
+                    ->disabledOn('edit')
+                    ->rules([
+                        function ($get) {
+                            return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                if (!$value)
+                                    return;
+                                $semesterId = $get('semester_id');
+                                if (!$semesterId)
+                                    return;
+
+                                $course = \App\Models\Course::find($value);
+                                if (!$course)
+                                    return;
+
+                                $count = \App\Models\Section::where('course_id', $value)
+                                    ->where('semester_id', $semesterId)
+                                    ->where('id', '!=', $get('id'))
+                                    ->count();
+
+                                if ($count >= $course->sections) {
+                                    $fail("The maximum number of sections ({$course->sections}) for this course in this semester has been reached.");
+                                }
+                            };
+                        }
+                    ]),
                 TextInput::make('section_number')
                     ->label('Section Number')
                     ->placeholder('e.g. S1, S2')

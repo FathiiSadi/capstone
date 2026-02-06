@@ -164,11 +164,11 @@
                     <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center">
                         @if($isAdmin)
                             <div class="visibility-toggle">
-                                <a href="{{ route('schedule.index', ['semester_id' => $selectedSemester?->id, 'all' => 0]) }}" 
+                                <a href="{{ route('schedule.index', ['semester_id' => $selectedSemester?->id, 'all' => 0]) }}"
                                    class="nav-link {{ !$viewAll ? 'active' : '' }}">
                                     <i class="bi bi-person-check me-1"></i> My Schedule
                                 </a>
-                                <a href="{{ route('schedule.index', ['semester_id' => $selectedSemester?->id, 'all' => 1]) }}" 
+                                <a href="{{ route('schedule.index', ['semester_id' => $selectedSemester?->id, 'all' => 1]) }}"
                                    class="nav-link {{ $viewAll ? 'active' : '' }}">
                                     <i class="bi bi-grid-3x3-gap me-1"></i> Full Schedule
                                 </a>
@@ -226,7 +226,7 @@
                             <i class="bi bi-geo-alt-fill"></i>
                         </div>
                         <p class="text-muted small text-uppercase fw-bold mb-1" style="letter-spacing: 0.05em;">Locations</p>
-                        <h2 class="mb-0 fw-bold">{{ $sections->pluck('room_id')->filter()->unique()->count() ?: 1 }}</h2>
+                        <h2 class="mb-0 fw-bold">{{ $sections->pluck('room_id')->filter()->unique()->count() ?: 0 }}</h2>
                         <div class="mt-2 small text-warning">
                              Assigned rooms
                         </div>
@@ -320,7 +320,7 @@
                     </div>
                 @endif
             </div>
-            
+
             @if($viewAll && $report['underloaded']->isNotEmpty())
                 <div class="alert alert-warning border-0 shadow-sm mt-5 rounded-4 p-4">
                     <div class="d-flex gap-3">

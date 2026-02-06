@@ -70,6 +70,8 @@ class FifoAllocator
     {
         $preferences = InstructorPreference::query()
             ->where('semester_id', $semester->id)
+            ->whereNotNull('instructor_id')
+            ->whereNotNull('course_id')
             ->with(['instructor.departments', 'course', 'timeSlots'])
             ->get();
 
@@ -103,8 +105,8 @@ class FifoAllocator
         $instructor = $preference->instructor;
         $course = $preference->course;
 
-        if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-            $this->skipPreference($preference, 'Stopping condition: instructor already satisfied minimum load.');
+        if (!$instructor || !$course) {
+            $this->skipPreference($preference, 'Internal error: Instructor or Course missing from preference record.');
             return;
         }
 
@@ -147,9 +149,6 @@ class FifoAllocator
         $assignedCountThisPass = 0;
         $perInstructorLimit = SectionQuotaService::getPerInstructorSectionLimit($course, $semester);
         foreach ($timeSlots as $timeSlot) {
-            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-                break;
-            }
 
             if (SectionQuotaService::getInstructorCourseCount($instructor, $course, $semester) >= $perInstructorLimit) {
                 break;
@@ -536,7 +535,10 @@ class FifoAllocator
     {
         $this->preferencesSkipped++;
 
-        $key = ($preference->instructor->user?->name ?? "ID: {$preference->instructor->id}") . " - {$preference->course->name}";
+        $instructorName = $preference->instructor?->user?->name ?? "Unknown Instructor";
+        $courseName = $preference->course?->name ?? "Unknown Course";
+        $key = "{$instructorName} - {$courseName} (ID: {$preference->id})";
+
         $this->skipReasons[$key] = $reason;
 
         Log::info("Preference skipped", [
