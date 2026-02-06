@@ -1,4 +1,5 @@
-/* ============================================
+/* style.css
+============================================
    1. BRAND VARIABLES (Navy & Electric Teal Theme)
    ============================================ */
 :root {
@@ -259,8 +260,12 @@ display: block;  /* Makes the image behave like a block */
 /* ============================================
    6. RESPONSIVE STYLES (Mobile < 768px)
    ============================================ */
+/* MOBILE MODAL FIX – single scroll only */
+/* ============================================
+   REPLACE YOUR EXISTING @media (max-width: 768px) BLOCK WITH THIS
+   ============================================ */
 @media (max-width: 768px) {
-    /* Topbar Alignment */
+    /* 1. Standard Mobile Adjustments */
     .topbar {
         padding: 0 12px;
         justify-content: space-between;
@@ -275,18 +280,15 @@ display: block;  /* Makes the image behave like a block */
         margin-right: 0 !important;
     }
 
-    /* Smaller Logo on Mobile */
     .topbar img {
         height: 32px !important;
         width: auto;
     }
 
-    /* Hide User Name */
     .topbar .d-flex.align-items-center.gap-3 span.d-none.d-md-inline {
         display: none !important;
     }
 
-    /* Sidebar (Off-Canvas) */
     .sidebar {
         position: fixed !important;
         top: 60px;
@@ -301,21 +303,18 @@ display: block;  /* Makes the image behave like a block */
         left: 0 !important;
     }
 
-    /* Main Content Reset */
     .main {
         margin-left: 0 !important;
         width: 100%;
         padding: 1rem !important;
     }
 
-    /* Login Mobile */
     .login-card {
         width: 100% !important;
         max-width: 400px;
         margin: 1rem;
     }
 
-    /* Tables */
     .table-responsive {
         display: block;
         width: 100%;
@@ -327,6 +326,32 @@ display: block;  /* Makes the image behave like a block */
         white-space: nowrap;
         padding: 0.75rem 0.5rem !important;
     }
+
+    /* --- THE SCROLL FIX STARTS HERE --- */
+    
+    /* 1. Force the dialog to use natural height (grows with your course list) */
+    .modal-dialog {
+        height: auto !important;
+        min-height: 100% !important; /* Ensure it starts at top */
+        margin: 10px !important;     /* Side margins */
+        margin-bottom: 100px !important; /* Extra space at bottom for the Save button */
+    }
+
+    /* 2. Reset inner containers so they don't trap the scrollbar */
+    .modal-content,
+    .modal-body {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    /* 3. Enable smooth native scrolling for the whole page */
+    .modal {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch; 
+        padding-right: 0 !important;
+    }
+    /* --- THE SCROLL FIX ENDS HERE --- */
 }
 
 /* Schedule Nav Pills */
@@ -334,3 +359,5 @@ display: block;  /* Makes the image behave like a block */
     background-color: var(--brand-accent);
     color: #fff;
 }
+
+
