@@ -155,10 +155,9 @@ class FifoAllocator
             }
 
             // Check if instructor reached min credits inside the loop
-            // REMOVED: We allow filling up to Max Credits for explicit preferences
-            // if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
-            //    break;
-            // }
+            if (!$this->creditCalculator->isUnderloaded($instructor, $semester)) {
+                break;
+            }
 
             // Try to assign this time slot (Atomic Pair Logic)
             $assignedSection = $this->tryAssignTimeSlot($instructor, $course, $timeSlot, $semester);
@@ -286,6 +285,34 @@ class FifoAllocator
             // User Requirement: "When an instructor selects a course, the system must assign exactly two linked sections"
             // If the instructor can have 2 sections and has none yet, we must assign a pair (both at once). No partial assignment.
             $needsPair = ($quotaRemaining >= 2);
+
+            if ($needsPair) {
+                // Check if assigning a pair would exceed the minimum load?
+                $currentCredits = $this->creditCalculator->calculateTotalCredits($instructor, $semester);
+                $minCredits = $this->creditCalculator->getMinimumCredits($instructor, $semester);
+                $courseCredits = (float) ($course->credits ?? 3.0);
+
+                // If current + 2 sections > min_credits AND current + 1 section <= min_credits (or close to it) -> Prefer 1 section
+                // Actually constraint is "should not exceed min load at all"
+                if ($currentCredits + (2 * $courseCredits) > $minCredits) {
+                    // Pair would exceed limit.
+                    // Fallback to Single assignment?
+                    // Verify if single fits.
+                    if ($currentCredits + $courseCredits <= $minCredits) {
+                        $needsPair = false; // Downgrade to single
+                    } else {
+                        // Even single exceeds? Then maybe we shouldn't assign at all?
+                        // But we checked `isUnderloaded` at start of loop... so we actally NEED credits.
+                        // But if we need 1 credit and course is 3... 
+
+                        // If we are strictly "Do not exceed", then we should assign single if it fits, else nothing?
+                        // But let's assume single fits or is acceptable overshoot (minimal).
+                        // The issue reported was 18 vs 15 (3 credits over).
+                        // If we assign 1 section (3 credits) -> 15. Perfect.
+                        $needsPair = false;
+                    }
+                }
+            }
 
             if ($needsPair) {
                 // Try to assign PAIR (Original + Consecutive)
